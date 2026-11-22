@@ -24,6 +24,16 @@
     B: 'the white key just right of the three black keys'
   };
 
+  var KID_CLUE = {
+    C: 'Find the key called *C*! It is just left of the TWO black keys.',
+    D: 'Find the key called *D*! It is in the MIDDLE of the two black keys.',
+    E: 'Find the key called *E*! It is just right of the TWO black keys.',
+    F: 'Find the key called *F*! It is just left of the THREE black keys.',
+    G: 'Find the key called *G*! It is in the MIDDLE of the three black keys.',
+    A: 'Find the key called *A*! It is in the MIDDLE of the three black keys, on the right.',
+    B: 'Find the key called *B*! It is just right of the THREE black keys.'
+  };
+
   /* ---- helpers for building quiz questions ---- */
   // Multiple choice with the correct answer placed at a random position.
   function choice(prompt, kid, right, wrong, r, extra) {
@@ -121,7 +131,7 @@
       gen: function (level, r) {
         var q = [
           function () { var n = pick([1, 2, 3, 4, 5], r); var wrong = shuffled([1, 2, 3, 4, 5].filter(function (x) { return x !== n; }), r).slice(0, 2).map(function (x) { return FINGER_NAMES[x]; });
-            return choice('Which finger is number ' + n + '?', 'Which finger is number ' + n + '?', FINGER_NAMES[n], wrong, r); },
+            return choice('Which finger is number ' + n + '?', 'Which finger is number ' + n + '?', FINGER_NAMES[n], wrong, r, { abstract: true }); },
           function () { var n = pick([1, 2, 3, 4, 5], r); var wrong = shuffled([1, 2, 3, 4, 5].filter(function (x) { return x !== n; }), r).slice(0, 2).map(String);
             return choice('What number is your ' + FINGER_NAMES[n].toLowerCase() + ' finger?', 'What number is the ' + FINGER_NAMES[n].toLowerCase() + '?', String(n), wrong, r); },
           function () { return choice('Which hand usually plays the high keys on the right?', 'Which hand plays the HIGH keys?', 'Right hand', ['Left hand'], r); },
@@ -145,18 +155,18 @@
           vis: { k: 'kb', lo: 60, hi: 72, light: [61, 63, 66, 68, 70] } },
         { title: 'The music alphabet', text: 'Notes are named with the letters A B C D E F G. After G we start again at A. Press the speaker to hear them going up.', kid: 'Notes have letter names: A B C D E F G. Then we start again!',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true }, play: { notes: [60, 62, 64, 65, 67, 69, 71, 72] }, auto: true },
-        { title: 'Find C', text: 'C is the white key just left of the two black keys. Tap a C. The C near the middle of the piano is called Middle C.', kid: 'C is just left of the TWO black keys. Tap a C!',
+        { title: 'Find C', text: 'C is the white key just left of the two black keys. Tap a C. The C near the middle of the piano is called Middle C.', kid: '*C* is just left of the TWO black keys. Tap a *C*! *C*!',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true, light: [60, 72] }, tap: [{ mode: 'pc', pcs: [0] }] },
-        { title: 'Find D and E', text: 'D sits in the middle of the two black keys. E is just right of them. Tap a D.', kid: 'D is in the MIDDLE of the two black keys. Tap a D!',
+        { title: 'Find D and E', text: 'D sits in the middle of the two black keys. E is just right of them. Tap a D.', kid: '*D* is in the MIDDLE of the two black keys. Tap a *D*! *D*!',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true, light: [62] }, tap: [{ mode: 'pc', pcs: [2] }] },
-        { title: 'Find F, G, A and B', text: 'F is just left of the three black keys. G and A sit between them. B is just right of the three black keys. Tap an F.', kid: 'F is just left of the THREE black keys. Tap an F!',
+        { title: 'Find F, G, A and B', text: 'F is just left of the three black keys. G and A sit between them. B is just right of the three black keys. Tap an F.', kid: '*F* is just left of the THREE black keys. Tap an *F*! *F*!',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true, light: [65, 67, 69, 71] }, tap: [{ mode: 'pc', pcs: [5] }] }
       ],
       gen: function (level, r) {
-        if (level >= 1 && r() < 0.2) return choice('What letter comes after G?', 'What letter comes after G?', 'A', ['H', 'B'], r);
+        if (level >= 1 && r() < 0.2) return choice('What letter comes after G?', 'What letter comes after G?', 'A', ['H', 'B'], r, { abstract: true });
         var pool = level === 0 ? ['C', 'F'] : (level === 1 ? ['C', 'D', 'E', 'F', 'G'] : ['C', 'D', 'E', 'F', 'G', 'A', 'B']);
         var n = pick(pool, r);
-        return tap('Tap a note called ' + n + '.', 'Tap the key called ' + n + '!', { mode: 'pc', pcs: [WHITE[n] % 12] }, { lo: 60, hi: 84 }, { nameOnly: n });
+        return tap('Tap a note called ' + n + '.', 'Tap the key called *' + n + '*! *' + n + '*!', { mode: 'pc', pcs: [WHITE[n] % 12] }, { lo: 60, hi: 84 }, { nameOnly: n });
       }
     },
 
@@ -167,7 +177,7 @@
       gen: function () {
         return { type: 'find', targets: [60], pitchClassOnly: true,
           prompt: 'Find a C on your piano. It is the white key just left of the two black keys.',
-          kid: 'Find a C! Just left of the two black keys.',
+          kid: 'Find *C*! It is just left of the TWO black keys. *C*! Press *C*!',
           voice: 'Find the note C on your piano. It is the white key just left of the two black keys.' };
       }
     },
@@ -178,7 +188,7 @@
         var pool = level === 0 ? ['C', 'F'] : (level === 1 ? ['C', 'D', 'E', 'F'] : ['C', 'D', 'E', 'F', 'G', 'A', 'B']);
         var n = pick(pool, r);
         return { type: 'find', targets: [WHITE[n]], pitchClassOnly: true,
-          prompt: 'Find ' + GROUP_CLUE[n] + '.', kid: 'Find ' + GROUP_CLUE[n] + '.', voice: 'Find ' + GROUP_CLUE[n] + '.' };
+          prompt: 'Find ' + GROUP_CLUE[n] + '.', kid: (n.length === 1 && KID_CLUE[n]) || ('Find ' + GROUP_CLUE[n] + '.'), voice: 'Find ' + GROUP_CLUE[n] + '.' };
       }
     },
     {
@@ -188,7 +198,7 @@
         var pool = level === 0 ? ['C', 'D', 'E'] : (level === 1 ? ['C', 'D', 'E', 'F', 'G'] : ['C', 'D', 'E', 'F', 'G', 'A', 'B']);
         var n = pick(pool, r);
         return { type: 'find', targets: [WHITE[n]], pitchClassOnly: true,
-          prompt: 'Play the note ' + n + '.', kid: 'Play the key called ' + n + '!', voice: 'Find the note called ' + n + '.', nameOnly: n };
+          prompt: 'Play the note ' + n + '.', kid: 'Play the key called *' + n + '*! Press *' + n + '*!', voice: 'Find the note called ' + n + '.', nameOnly: n };
       }
     },
     {
@@ -225,9 +235,9 @@
       ],
       gen: function (level, r) {
         var q = [
-          function () { return choice('What does a metronome do?', 'What does a metronome do?', 'Ticks a steady beat', ['Plays the melody for you', 'Makes the piano louder'], r); },
-          function () { return choice('Count the beats: 1 2 3 4. How many beats is that?', 'Count: 1 2 3 4. How many beats?', '4', ['2', '3'], r); },
-          function () { return choice('The tempo is…', 'The tempo is how…', 'how fast or slow the beat is', ['how loud the music is', 'how high the notes are'], r); }
+          function () { return choice('What does a metronome do?', 'What does a metronome do?', 'Ticks a steady beat', ['Plays the melody for you', 'Makes the piano louder'], r, { abstract: true }); },
+          function () { return choice('Count the beats: 1 2 3 4. How many beats is that?', 'Count: 1 2 3 4. How many beats?', '4', ['2', '3'], r, { abstract: true }); },
+          function () { return choice('The tempo is…', 'The tempo is how…', 'how fast or slow the beat is', ['how loud the music is', 'how high the notes are'], r, { abstract: true }); }
         ];
         if (level >= 1) q.push(function () {
           var slow = pick([54, 60, 66], r), fast = pick([100, 112, 120], r), fastFirst = r() < 0.5;
@@ -279,9 +289,9 @@
           return choiceOpts('Press 🔊 and listen. Which blocks match what you hear?', 'Listen. Which blocks do you hear?', opts, 0, r, { blocks: true, play: { pattern: pats[i], bpm: 72, clicks: true } });
         });
         if (level >= 2) q.push(function () {
-          return choice('What is a 1-beat note called?', 'What is the 1-beat note called?', 'A quarter note', ['A half note', 'A whole note'], r);
+          return choice('What is a 1-beat note called?', 'What is the 1-beat note called?', 'A quarter note', ['A half note', 'A whole note'], r, { abstract: true });
         }, function () {
-          return choice('What is a 4-beat note called?', 'What is the 4-beat note called?', 'A whole note', ['A quarter note', 'A half note'], r);
+          return choice('What is a 4-beat note called?', 'What is the 4-beat note called?', 'A whole note', ['A quarter note', 'A half note'], r, { abstract: true });
         });
         return pick(q, r)();
       }
@@ -322,8 +332,8 @@
         var q = [
           function () { var pool = level === 0 ? [60, 62, 64] : [60, 62, 64, 65, 67], n = pick(pool, r);
             return tap('Look at the note. Tap the matching key.', 'Which key is it? Tap it!', { mode: 'note', note: n }, { lo: 60, hi: 72 }, { vis: { k: 'staff', notes: [n], clef: 'treble' }, readMode: true }); },
-          function () { return choice('Which clef is usually for the right hand?', 'Which clef is for the RIGHT hand?', 'Treble clef', ['Bass clef'], r); },
-          function () { return choice('Which clef is usually for the left hand?', 'Which clef is for the LEFT hand?', 'Bass clef', ['Treble clef'], r); },
+          function () { return choice('Which clef is usually for the right hand?', 'Which clef is for the RIGHT hand?', 'Treble clef', ['Bass clef'], r, { abstract: true }); },
+          function () { return choice('Which clef is usually for the left hand?', 'Which clef is for the LEFT hand?', 'Bass clef', ['Treble clef'], r, { abstract: true }); },
           function () { return choice('A note written higher on the staff sounds…', 'A note higher on the staff sounds…', 'higher', ['lower'], r); }
         ];
         if (level >= 1) q.push(function () { var n = pick([60, 62, 64, 65, 67], r);

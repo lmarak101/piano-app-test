@@ -16,7 +16,9 @@
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function cfgFor(p) { return E.masteryConfig(p.age); }
   function states(p) { p.states = E.ensureStates(C.SKILLS, p.states); return p.states; }
-  function isKid(p) { return !!p && p.age === '4-7'; }
+  // "Kid mode": ages 4-7 and anyone who cannot read yet. Voice-led, picture-led, short words, lots of repeating.
+  function isKid(p) { return !!p && (p.age === '4-7' || p.reading === 'none'); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
   function ctxOf(p, kind) { p.ctx = p.ctx || {}; p.ctx[kind] = p.ctx[kind] || { last: null, same: 0 }; return p.ctx[kind]; }
   function skillTitle(id) { return C.skillById(id).title; }
 
@@ -44,17 +46,63 @@
       o.connect(g); g.connect(a.destination); o.start(when); o.stop(when + 0.07);
     } catch (e) {}
   }
+  var voiceCache = null;
+  function bestVoice() {
+    if (voiceCache) return voiceCache;
+    try {
+      var vs = speechSynthesis.getVoices().filter(function (v) { return /^en/i.test(v.lang); });
+      if (!vs.length) return null;
+      var pref = vs.filter(function (v) { return /female|samantha|zira|google uk english female|google us english|aria|jenny/i.test(v.name); })[0];
+      voiceCache = pref || vs[0]; return voiceCache;
+    } catch (e) { return null; }
+  }
+  // Split "Keys on the left are LOW, like a bear" or "Tap the key called *C*" into plain parts and focus words.
+  var FOCUS_RE = /\*([^*]+)\*|\b([A-Z]{2,}(?: [A-Z]{2,})*)\b/g;
+  function parseFocus(text) {
+    var parts = [], last = 0, m;
+    FOCUS_RE.lastIndex = 0;
+    while ((m = FOCUS_RE.exec(text))) {
+      if (m.index > last) parts.push({ t: text.slice(last, m.index) });
+      parts.push({ t: m[1] || m[2], focus: true }); last = m.index + m[0].length;
+    }
+    if (last < text.length) parts.push({ t: text.slice(last) });
+    return parts;
+  }
+  function focusWords(text) { return parseFocus(text).filter(function (x) { return x.focus; }).map(function (x) { return x.t; }); }
+  function plain(text) { return text.replace(/\*/g, ''); }
+  function utter(text, rate, pitch) {
+    var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = rate; u.pitch = pitch; u.volume = 1;
+    var v = bestVoice(); if (v) u.voice = v; speechSynthesis.speak(u);
+  }
+  // Kids hear the sentence, and the important word said again and again IN the sentence:
+  // "Keys on the left are ... low! ... low! ... low! ... like a big bear."
   function say(text) {
     var p = prof(); if (!p || !p.voice || !text || !('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US';
-      u.rate = isKid(p) ? 0.85 : 1; u.pitch = isKid(p) ? 1.2 : 1;
-      speechSynthesis.speak(u);
+      if (!isKid(p)) { utter(plain(text), 1, 1); return; }
+      parseFocus(text).forEach(function (x) {
+        var t = x.t.trim(); if (!t) return;
+        if (x.focus) { var w = /^[A-G]$/.test(t) ? t : t.toLowerCase(); utter(w + '!', 0.65, 1.6); utter(w + '!', 0.65, 1.6); utter(w + '!', 0.7, 1.5); }
+        else utter(t, 0.82, 1.25);
+      });
     } catch (e) {}
   }
+  var PRAISE = ['Yay! Great job! You did it!', 'Wow! Super! You are a star!', 'Hooray! Well done! Great playing!', 'Amazing! You did it, you did it!'];
+  var TRYAGAIN = ['Oops! That is okay! Try again! You can do it!', 'Almost! Try again! You can do it!', 'Nice try! One more time! You can do it!'];
+  var nudgeText = null, nudgeCount = 0, nudgeTimer = null;
+  function armNudge(text) {
+    clearTimeout(nudgeTimer); nudgeTimer = null;
+    if (text !== undefined) { nudgeText = text; nudgeCount = 0; }
+    var p = prof(); if (!nudgeText || !p || !isKid(p) || !p.voice || nudgeCount >= 2) return;
+    nudgeTimer = setTimeout(function () {
+      nudgeCount++; var m = document.querySelector('.mascot'); if (m) { m.classList.add('wiggle'); setTimeout(function () { m.classList.remove('wiggle'); }, 1200); }
+      say(nudgeText); armNudge();
+    }, 11000);
+  }
+  function stopNudge() { clearTimeout(nudgeTimer); nudgeTimer = null; nudgeText = null; }
   var timers = [];
-  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; stopNudge(); }
   function later(fn, ms) { var t = setTimeout(fn, Math.max(0, ms)); timers.push(t); return t; }
 
   function pulseCircle(label) {
@@ -103,7 +151,7 @@
 
   /* ---------------- input: MIDI + on-screen ---------------- */
   var Input = { handler: null, state: 'off', name: '' };
-  function emit(note, t) { if (Input.handler) Input.handler(note, t || performance.now()); }
+  function emit(note, t) { armNudge(); if (Input.handler) Input.handler(note, t || performance.now()); }
   function updateChip() {
     var el = document.getElementById('midichip'); if (!el) return;
     var map = {
@@ -257,7 +305,17 @@
   }
   function modal(html) { closeModal(); var d = document.createElement('div'); d.className = 'modal'; d.id = 'modal'; d.innerHTML = '<div>' + html + '</div>'; document.body.appendChild(d); }
   function closeModal() { var m = document.getElementById('modal'); if (m) m.remove(); }
-  function guide(p, text) { return '<div class="guide"><span class="mascot">🐻</span><div class="bubble">' + esc(text) + '</div></div>'; }
+  function focusHTML(text) {
+    return parseFocus(text).map(function (x) { return x.focus ? '<b class="focus">' + esc(x.t.toLowerCase() === x.t || x.t.length > 1 ? x.t.toLowerCase() : x.t) + '</b>' : esc(x.t); }).join('');
+  }
+  // Mascot + a short picture-style bubble. The words are for the grown-up; the voice is for the child.
+  function guide(p, text) {
+    var fw = focusWords(text);
+    var big = fw.length ? fw.map(function (w) { return '<span class="fchip">' + esc(/^[A-G]$/.test(w) ? w : w.toLowerCase()) + '</span>'; }).join(' ') : '<span class="fchip">🔊</span>';
+    return '<div class="guide" data-a="hearagain"><span class="mascot">🐻</span><div class="bubble"><div class="bigwords">' + big + '</div><div class="caption">' + focusHTML(text) + '</div></div></div>';
+  }
+  // Buttons for kid mode show a picture, not words.
+  function bt(p, icon, text) { return isKid(p) ? '<span class="icobtn">' + icon + '</span>' : text; }
 
   /* ---------------- welcome / onboarding ---------------- */
   var ob = { name: '', age: '8-12', reading: 'some', input: 'midi', keys: '88' };
@@ -312,19 +370,19 @@
     var st = states(p), kid = isKid(p), rec = recommend(p), allDone = C.SKILLS.every(function (s) { return st[s.id].mastered; });
     var h = '<div class="row spread"><h1>' + (kid ? 'Hi ' : 'Hello, ') + esc(p.name) + '! 🎹</h1><button class="ghost" data-a="welcome">Switch</button></div>';
     if (p.input === 'midi') h += '<p><span id="midichip" class="chip-status" data-a="midi"></span></p>';
-    if (kid) h += guide(p, rec === 'theory' ? "Let's learn something new!" : "Let's play the piano!");
+    if (kid) { h += guide(p, rec === 'theory' ? "Let's LEARN! Learn something new!" : "Let's PLAY! Play the piano!"); if (p.voice) setTimeout(function () { if (document.querySelector('.kindbtn')) say(rec === 'theory' ? "Hello " + p.name + "! Let's LEARN! Learn something new!" : "Hello " + p.name + "! Let's PLAY! Play the piano!"); }, 400); }
     function kindBtn(kind, icon, name, sub) {
       var list = C.ofKind(kind), none = !E.available(list, st).length && !list.every(function (s) { return st[s.id].mastered; });
-      return '<button class="kindbtn' + (rec === kind ? ' rec' : '') + '" data-a="start" data-kind="' + kind + '"' + (none ? ' disabled' : '') + '><span class="ico">' + icon + '</span><b>' + name + '</b><span>' + (kid ? sub : esc(nextTitle(p, kind))) + '</span></button>';
+      return '<button class="kindbtn' + (rec === kind ? ' rec' : '') + '" data-a="start" data-kind="' + kind + '"' + (none ? ' disabled' : '') + '><span class="ico">' + icon + '</span><b>' + name + '</b>' + (kid ? '' : '<span>' + esc(nextTitle(p, kind)) + '</span>') + '</button>';
     }
     h += '<div class="twobtn">' + kindBtn('theory', kid ? '🦉' : '📖', 'Learn', 'Stories and games') + kindBtn('practical', '🎹', 'Play', 'Play your piano') + '</div>' +
-      '<p class="mut small center">' + (rec === 'theory' ? 'Suggested next: Learn' : 'Suggested next: Play') + ' · Learn uses the on-screen piano. Play uses your own piano or keyboard.</p>';
+      (kid ? '<p class="center" style="font-size:30px">' + (rec === 'theory' ? '👆🦉' : '👆🎹') + '</p>' : '<p class="mut small center">' + (rec === 'theory' ? 'Suggested next: Learn' : 'Suggested next: Play') + ' · Learn uses the on-screen piano. Play uses your own piano or keyboard.</p>');
     h += '<h2>My stickers</h2><div class="stickers">' + C.SKILLS.map(function (s) { return '<div class="sticker' + (st[s.id].mastered ? '' : ' off') + '" title="' + esc(s.title) + '">' + (st[s.id].mastered ? s.sticker : '❔') + '</div>'; }).join('') + '</div>';
     if (allDone) {
       h += '<div class="card premium" style="margin-top:12px"><h3>🎉 You finished Beginner!</h3><p>You can play Hot Cross Buns, Mary Had a Little Lamb and Ode to Joy, and read your first notes.</p>' +
         '<p class="mut small"><b>Preview of what comes next (no payment in this prototype):</b> Early Intermediate onward is Premium: ₹299 per month per learner, or the Family pack ₹599 per month (up to 5 learners). Yearly: ₹2,499 or ₹4,999.</p></div>';
     }
-    C.STAGES.forEach(function (stage) {
+    if (!kid) C.STAGES.forEach(function (stage) {
       var list = C.SKILLS.filter(function (s) { return s.stage === stage; });
       var d = list.filter(function (s) { return st[s.id].mastered; }).length;
       h += '<h2>' + stage + ' <span class="mut small">' + d + ' of ' + list.length + '</span></h2>' + list.map(function (s) { return skillCard(p, s); }).join('');
@@ -349,24 +407,25 @@
     L.met = st.tap ? st.tap.map(function () { return false; }) : [];
     var text = kid ? st.kid : st.text;
     var h = '<div class="row spread"><button class="ghost" data-a="lessonexit">✕</button><div class="dots">' + dots + '</div><button class="ghost" data-a="lessonhear">🔊</button></div>' +
-      '<div class="card" style="margin-top:10px"><div class="mut small">Lesson: ' + esc(L.skill.title) + ' · step ' + (L.i + 1) + ' of ' + n + '</div><h2 style="margin-top:6px">' + esc(st.title) + '</h2>' +
+      '<div class="card" style="margin-top:10px">' + (kid ? '<div class="topico">' + L.skill.sticker + '</div>' : '<div class="mut small">Lesson: ' + esc(L.skill.title) + ' · step ' + (L.i + 1) + ' of ' + n + '</div><h2 style="margin-top:6px">' + esc(st.title) + '</h2>') +
       (kid ? guide(p, text) : '<p class="prompt" style="font-size:18px;font-weight:600">' + esc(text) + '</p>') +
       '<div id="vis">' + visHTML(st.vis, p) + '</div><div id="fb" class="feedback"></div></div>' +
-      '<div class="row spread"><button class="ghost" data-a="lessonback"' + (L.i === 0 ? ' disabled' : '') + '>◀ Back</button><button id="lessonnext" data-a="lessonnext"' + (need ? ' disabled' : '') + '>' + (L.i === n - 1 ? 'Done ✓' : 'Next ▶') + '</button></div>';
+      '<div class="row spread"><button class="ghost" data-a="lessonback"' + (L.i === 0 ? ' disabled' : '') + '>' + bt(p, '◀', '◀ Back') + '</button><button id="lessonnext" class="' + (kid ? 'bigicon' : '') + '" data-a="lessonnext"' + (need ? ' disabled' : '') + '>' + bt(p, L.i === n - 1 ? '⭐' : '▶', L.i === n - 1 ? 'Done ✓' : 'Next ▶') + '</button></div>';
     show(h);
     var kbs = document.querySelectorAll('#vis .kbwrap');
     for (var k = 0; k < kbs.length; k++) bindKeys(kbs[k]);
     var fb = document.getElementById('fb');
     if (need) {
-      fb.textContent = '👆 Try it on the keyboard.';
+      fb.textContent = kid ? '👆🎹' : '👆 Try it on the keyboard.';
       Input.handler = function (note) {
         st.tap.forEach(function (rule, j) { if (!L.met[j] && E.checkAccept(rule, note)) L.met[j] = true; });
         var left = L.met.filter(function (x) { return !x; }).length;
-        if (!left) { fb.className = 'feedback ok'; fb.textContent = '✓ Great!'; var nb = document.getElementById('lessonnext'); if (nb) nb.disabled = false; }
-        else { fb.className = 'feedback'; fb.textContent = left === need ? '👆 Try it on the keyboard.' : '✓ Good! One more to go.'; }
+        if (!left) { fb.className = 'feedback ok'; fb.textContent = kid ? '⭐⭐⭐' : '✓ Great!'; var nb = document.getElementById('lessonnext'); if (nb) nb.disabled = false; if (kid) say(pick(PRAISE)); }
+        else { fb.className = 'feedback'; fb.textContent = left === need ? (kid ? '👆🎹' : '👆 Try it on the keyboard.') : (kid ? '👍 one more!' : '✓ Good! One more to go.'); if (kid && left !== need) say('Good! One more!'); }
       };
     }
     if (p.voice) say(text);
+    armNudge(text);
     if (st.auto && st.play) later(function () { playSpec(st.play); }, kid ? 2500 : 300);
   }
   function endLesson() {
@@ -400,7 +459,9 @@
     function build() {
       var level = E.levelFor(st[skill.id], skill.maxLevel);
       if (mode === 'support') level = Math.max(0, level - 1);
-      cur = { skill: skill, ex: C.makeExercise(skill, level), mode: mode, misses: 0, tries: 0, hinted: false, done: false, demoing: false };
+      var ex0 = C.makeExercise(skill, level);
+      if (isKid(p)) for (var tries = 0; tries < 12 && ex0.abstract; tries++) ex0 = C.makeExercise(skill, level);
+      cur = { skill: skill, ex: ex0, mode: mode, misses: 0, tries: 0, hinted: false, done: false, demoing: false };
       renderExercise();
     }
     p.lessons = p.lessons || {};
@@ -413,10 +474,10 @@
     for (var i = 0; i < sess.total; i++) dots += '<i class="' + (i < sess.n ? 'done' : (i === sess.n ? 'cur' : '')) + '"></i>';
     return '<div class="row spread"><button class="ghost" data-a="quit">✕</button><div class="dots">' + dots + '</div><div class="row" style="gap:6px">' +
       (cur.skill.lesson ? '<button class="ghost" data-a="relesson">📖</button>' : '') + '<button class="ghost" data-a="listen">🔊</button></div></div>' +
-      '<div class="card" style="margin-top:10px"><div class="mut small">' + (cur.skill.kind === 'theory' ? '📖 Learn' : '🎹 Play') + ' · ' + esc(cur.skill.title) + ' · ' + modeLabel(cur.mode) + (sess.testOut ? ' · Test out' : '') + '</div>' + inner + '</div>';
+      '<div class="card" style="margin-top:10px">' + (isKid(prof()) ? '<div class="topico">' + cur.skill.sticker + '</div>' : '<div class="mut small">' + (cur.skill.kind === 'theory' ? '📖 Learn' : '🎹 Play') + ' · ' + esc(cur.skill.title) + ' · ' + modeLabel(cur.mode) + (sess.testOut ? ' · Test out' : '') + '</div>') + inner + '</div>';
   }
   function promptHTML(p, ex) {
-    var tag = ex.hand ? '<div class="handtag" style="background:' + C.HAND_COLORS[ex.hand] + '">' + (ex.hand === 'R' ? 'RIGHT HAND' : 'LEFT HAND') + '</div>' : '';
+    var tag = ex.hand ? '<div class="handtag" style="background:' + C.HAND_COLORS[ex.hand] + '">' + (ex.hand === 'R' ? '🟠 RIGHT HAND' : '🔵 LEFT HAND') + '</div>' : '';
     return tag + (isKid(p) ? guide(p, ex.kid) : '<div class="prompt">' + esc(ex.prompt) + '</div>');
   }
   function needSetup() {
@@ -425,21 +486,41 @@
   }
   function renderExercise() {
     var p = prof(), ex = cur.ex;
-    if (ex.type === 'quiz') { renderQuiz(); if (p.voice) say(isKid(p) ? ex.kid : ex.prompt); return; }
+    if (ex.type === 'quiz') { renderQuiz(); if (p.voice) say(isKid(p) ? ex.kid : ex.prompt); armNudge(isKid(p) ? ex.kid : null); return; }
     if (needSetup()) { renderSetup(); return; }
     if (ex.type === 'rhythm') renderRhythm(); else renderNotes();
     if (p.voice) say(isKid(p) ? ex.kid : ex.prompt);
+    armNudge(isKid(p) ? ex.kid : null);
   }
 
   /* --- quiz (theory) --- */
+  // Pictures for answers so a child who cannot read can still choose.
+  var PICS = {
+    'right hand': '🟠🤚', 'left hand': '🔵🤚', 'high sounds': '🐦', 'low sounds': '🐻', 'higher': '⬆️🐦', 'lower': '⬇️🐻',
+    'curved, like holding a bubble': '🫧✋', 'flat, like pancakes': '🥞', 'stiff and straight, like sticks': '🪵',
+    'flat on the floor': '🦶⬇️', 'hanging in the air': '🦶☁️', 'crossed under the chair': '🪑❌',
+    'loose and relaxed': '🍜', 'tight and stiff': '🪨', 'pressed down hard': '💪',
+    'stop and shake them out': '🙌', 'play even harder': '😖', 'ignore it': '🙈',
+    'the fingertip': '👆', 'the whole flat finger': '🖐️', 'the knuckle': '✊'
+  };
+  var DIGITS = { 1: '1️⃣', 2: '2️⃣', 3: '3️⃣', 4: '4️⃣', 5: '5️⃣' };
+  function picOf(text) {
+    var t = String(text).toLowerCase(), m = /^(\d) beats?$/.exec(t);
+    if (PICS[t]) return PICS[t];
+    if (m) return DIGITS[m[1]] ? DIGITS[m[1]] + (m[1] === '1' ? ' 🥁' : ' 🥁🥁') : null;
+    if (/^\d$/.test(t)) return DIGITS[t] || null;
+    return null;
+  }
   function renderQuiz() {
     var p = prof(), ex = cur.ex, inner = promptHTML(p, ex) + '<div id="vis">' + (ex.vis ? visHTML(ex.vis, p) : '') + '</div>';
     if (ex.nameOnly) inner += '<div class="lessonvis"><div class="circle" style="background:' + (colorOf(C.WHITE[ex.nameOnly]) || '#4ea1ff') + ';color:#111">' + ex.nameOnly + '</div></div>';
     if (ex.play) inner += '<button class="ghost" data-a="listen">🔊 Play the sound</button>';
     if (ex.qtype === 'choice') {
-      inner += '<div class="opts" id="opts">' + ex.options.map(function (o, i) {
-        return '<div class="optrow">' + (o.play ? '<button class="play" data-a="playopt" data-i="' + i + '">🔊</button>' : '') +
-          '<button class="optbtn' + (o.pattern ? ' blocks' : '') + '" data-a="answer" data-i="' + i + '">' + (o.pattern ? blocksHTML(o.pattern, { small: true }) : esc(o.text)) + '</button></div>';
+      var kidq = isKid(p);
+      inner += '<div class="opts' + (kidq ? ' kidopts' : '') + '" id="opts">' + ex.options.map(function (o, i) {
+        var pic = kidq && !o.pattern ? picOf(o.text) : null;
+        return '<div class="optrow">' + (o.play ? '<button class="play" data-a="playopt" data-i="' + i + '">🔊</button>' : (kidq && !o.pattern ? '<button class="play" data-a="sayopt" data-i="' + i + '">🔊</button>' : '')) +
+          '<button class="optbtn' + (o.pattern ? ' blocks' : '') + (pic ? ' pic' : '') + '" data-a="answer" data-i="' + i + '">' + (o.pattern ? blocksHTML(o.pattern, { small: true }) : (pic ? '<span class="optpic">' + pic + '</span>' : esc(o.text))) + '</button></div>';
       }).join('') + '</div>';
     }
     inner += '<div id="fb" class="feedback"></div><div id="ctl"></div>';
@@ -454,7 +535,7 @@
         if (E.checkAccept(ex.accept, note)) { lightKey(kb, note, 'k-ok', 400); cur.done = true; finishQuiz(); }
         else {
           cur.tries++; lightKey(kb, note, 'k-bad', 300);
-          var fb = document.getElementById('fb'); fb.className = 'feedback bad'; fb.textContent = isKid(p) ? 'Oops! Try again.' : 'Not quite. Try again.';
+          var fb = document.getElementById('fb'); fb.className = 'feedback bad'; fb.textContent = isKid(p) ? '🙂 Try again!' : 'Not quite. Try again.'; if (isKid(p)) say(pick(TRYAGAIN) + ' ' + (cur.ex.kid || ''));
           if (cur.tries === 1) lightAnswer(kb);
           if (cur.tries >= 2) { cur.done = true; lightAnswer(kb); finishQuiz(); }
         }
@@ -470,7 +551,7 @@
     var ex = cur.ex, btns = document.querySelectorAll('.optbtn'), fb = document.getElementById('fb'), p = prof();
     if (i === ex.correct) { btns[i].classList.add('right'); cur.done = true; finishQuiz(); return; }
     cur.tries++; btns[i].classList.add('wrong'); btns[i].disabled = true;
-    fb.className = 'feedback bad'; fb.textContent = isKid(p) ? 'Oops! Try again.' : 'Not quite. Try again.';
+    fb.className = 'feedback bad'; fb.textContent = isKid(p) ? '🙂 Try again!' : 'Not quite. Try again.'; if (isKid(p)) say(pick(TRYAGAIN) + ' ' + (cur.ex.kid || ''));
     if (cur.tries >= 2 || ex.options.length - cur.tries <= 1) { btns[ex.correct].classList.add('right'); cur.done = true; finishQuiz(); }
   }
   function finishQuiz() {
@@ -486,21 +567,22 @@
   }
   function renderSetup() {
     var p = prof(), s = cur.ex.setup, kid = isKid(p), lo = s.fingerNotes[0] - (s.fingerNotes[0] % 12);
-    var h = frame('<div class="handtag" style="background:' + C.HAND_COLORS[s.hand] + '">' + (s.hand === 'R' ? 'RIGHT HAND' : 'LEFT HAND') + '</div><h2 style="margin-top:4px">' + esc(s.title) + '</h2>' +
+    var h = frame('<div class="handtag" style="background:' + C.HAND_COLORS[s.hand] + '">' + (s.hand === 'R' ? '🟠 RIGHT HAND' : '🔵 LEFT HAND') + '</div>' + (kid ? '' : '<h2 style="margin-top:4px">' + esc(s.title) + '</h2>') +
       (kid ? guide(p, s.kid) : '<p class="prompt" style="font-size:17px;font-weight:600">' + esc(s.text) + '</p>') +
-      '<div class="lessonvis">' + handsHTML(s.hand, { keys: true, letter: true }) + '</div><p class="mut small center">Look down at your own hand. This is how it should look from above.</p><div id="fb" class="feedback"></div>' +
-      '<div class="row"><button class="ghost" data-a="setupskip">Skip</button></div>');
+      '<div class="lessonvis">' + handsHTML(s.hand, { keys: true, letter: true }) + '</div>' + (kid ? '<p class="center" style="font-size:28px">👀⬇️🤚</p>' : '<p class="mut small center">Look down at your own hand. This is how it should look from above.</p>') + '<div id="fb" class="feedback"></div>' +
+      '<div class="row"><button class="ghost" data-a="setupskip">' + bt(p, '⏭', 'Skip') + '</button></div>');
     h += '<div class="kbwrap" id="kb">' + keyboardHTML(lo, lo + 12, p, { badges: badgesFor(s.hand, s.fingerNotes) }) + '</div>';
     show(h); bindKeys(document.getElementById('kb'));
     Input.handler = function (note) {
       var fb = document.getElementById('fb');
       if (note === s.confirmNote) {
-        fb.className = 'feedback ok'; fb.textContent = '✓ Perfect. Your hand is in the right place!'; Input.handler = null;
-        if (kid) say('Perfect!');
+        fb.className = 'feedback ok'; fb.textContent = kid ? '⭐⭐⭐' : '✓ Perfect. Your hand is in the right place!'; Input.handler = null;
+        if (kid) say('Perfect! Your hand is in the right place! Yay!');
         later(function () { sess.setupShown[cur.skill.id] = true; renderExercise(); }, 900);
       } else {
         fb.className = 'feedback bad';
-        fb.textContent = 'Press the key under your ' + (s.hand === 'R' ? 'thumb (1).' : 'little finger (5).');
+        fb.textContent = kid ? (s.hand === 'R' ? '👍 1' : '🤙 5') : 'Press the key under your ' + (s.hand === 'R' ? 'thumb (1).' : 'little finger (5).');
+        if (kid) say(s.hand === 'R' ? 'Press the key under your THUMB! Thumb is number ONE!' : 'Press the key under your LITTLE finger! Little finger is number FIVE!');
       }
     };
     if (p.voice) say(kid ? s.kid : s.text);
@@ -534,7 +616,7 @@
       if (a) tone(n, 0.5, t0 + i * gap / 1000);
       later(function () { lightKey(kb, n, 'k-target', gap - 60); }, 50 + i * gap);
     });
-    later(function () { cur.demoing = false; fb.className = 'feedback'; fb.textContent = '🎹 Now your turn!'; if (p.voice && isKid(p)) say('Now your turn!'); refreshNotes(); }, 100 + ex.targets.length * gap);
+    later(function () { cur.demoing = false; fb.className = 'feedback'; fb.textContent = '🎹 Now your turn!'; if (p.voice && isKid(p)) say('Now it is YOUR turn! Your turn! Your turn!'); refreshNotes(); }, 100 + ex.targets.length * gap);
   }
   function refreshNotes() {
     var p = prof(), ex = cur.ex, kb = document.getElementById('kb'), vis = document.getElementById('vis');
@@ -563,7 +645,8 @@
       cur.misses++;
       lightKey(kb, note, 'k-bad', 300);
       fb.className = 'feedback bad';
-      fb.textContent = isKid(p) || p.reading === 'none' ? 'Oops! Try again.' : (ex.readMode ? 'Not quite. Try again.' : 'Not quite: that was ' + E.noteName(note) + '. Try again.');
+      fb.textContent = isKid(p) ? '🙂 Try again!' : (ex.readMode ? 'Not quite. Try again.' : 'Not quite: that was ' + E.noteName(note) + '. Try again.');
+      if (isKid(p) && !r.gaveUp) say(pick(TRYAGAIN) + ' ' + (ex.kid || ''));
       if (r.gaveUp) { cur.done = true; revealAndFinish(); return; }
       refreshNotes();
     } else {
@@ -589,7 +672,7 @@
     var total = ex.pattern.reduce(function (a, b) { return a + b; }, 0), offs = E.patternOffsets(ex.pattern);
     var pat = ex.showPattern ? blocksHTML(ex.pattern) : '';
     var h = frame(promptHTML(p, ex) + '<div id="vis">' + pat + '<div class="beatwrap"><div class="circle" id="circ">♪</div><div class="beats" id="beats">' + offs.map(function () { return '<i></i>'; }).join('') + '</div></div></div>' +
-      '<div id="fb" class="feedback"></div><div id="ctl"><button class="ghost big" data-a="listen" style="margin-bottom:8px">🔊 Hear it first</button><button class="big" data-a="rstart">Start (' + ex.bpm + ' beats per minute)</button></div>');
+      '<div id="fb" class="feedback"></div><div id="ctl"><button class="ghost big" data-a="listen" style="margin-bottom:8px">' + (isKid(p) ? '👂' : '🔊 Hear it first') + '</button><button class="big' + (isKid(p) ? ' bigicon' : '') + '" data-a="rstart">' + (isKid(p) ? '▶' : 'Start (' + ex.bpm + ' beats per minute)') + '</button></div>');
     h += '<div class="kbwrap" id="kb">' + keyboardHTML(60, 72, p, {}) + '</div>';
     show(h); bindKeys(document.getElementById('kb'));
     cur.r = { beatMs: beatMs, total: total, offs: offs, running: false, played: [], expected: [], used: [], tol: beatMs * E.toleranceBeats(p.age) };
@@ -642,9 +725,9 @@
     save();
     var s3 = E.stars(q), starStr = '★★★'.slice(0, s3) + '☆☆☆'.slice(0, 3 - s3);
     fb.className = 'feedback ' + (q >= 0.6 ? 'ok' : 'bad');
-    fb.innerHTML = esc(msg || '') + '<div class="stars" style="color:#ffd93d">' + starStr + '</div>' + (newSticker ? '<div>🎉 New sticker: ' + sk.sticker + ' ' + esc(sk.title) + '!</div>' : '');
-    document.getElementById('ctl').innerHTML = '<button class="big" data-a="next">' + (sess.n + 1 >= sess.total ? 'Finish' : 'Next ▶') + '</button>';
-    if (p.voice && kid) say(q >= 0.9 ? 'Great job!' : (q >= 0.6 ? 'Well done!' : 'Good try!'));
+    fb.innerHTML = (kid ? '' : esc(msg || '')) + '<div class="stars' + (kid ? ' party' : '') + '" style="color:#ffd93d">' + starStr + '</div>' + (newSticker ? '<div class="newsticker">' + (kid ? '' : '🎉 New sticker: ') + sk.sticker + (kid ? '' : ' ' + esc(sk.title) + '!') + '</div>' : '');
+    document.getElementById('ctl').innerHTML = '<button class="big' + (kid ? ' bigicon' : '') + '" data-a="next">' + bt(p, sess.n + 1 >= sess.total ? '⭐' : '▶', sess.n + 1 >= sess.total ? 'Finish' : 'Next ▶') + '</button>';
+    if (p.voice && kid) say((newSticker ? 'You got a new sticker! ' : '') + (q >= 0.6 ? pick(PRAISE) : 'Good try! You are learning! Let us keep going!'));
     sess.n++;
     var dots = document.querySelectorAll('.dots i'); if (dots[sess.n - 1]) dots[sess.n - 1].className = 'done'; if (dots[sess.n]) dots[sess.n].className = 'cur';
   }
@@ -655,6 +738,7 @@
     playSpec({ notes: ex.targets });
   }
 
+  function stars_(se) { return se.results.reduce(function (a, r) { return a + E.stars(r.q); }, 0); }
   function endSession() {
     var p = prof(), st = states(p), kid = isKid(p), secs = Math.round((Date.now() - sess.started) / 1000);
     p.seconds = (p.seconds || 0) + secs; p.sessions = (p.sessions || 0) + 1; if (!sess.testOut) p.lastKind = sess.kind;
@@ -669,7 +753,7 @@
     } else {
       var stars = sess.results.reduce(function (a, r) { return a + E.stars(r.q); }, 0), seen = {};
       sess.results.forEach(function (r) { seen[r.skillId] = 1; });
-      h = '<div class="card center"><h1>' + (kid ? 'All done for today! 🐥' : (sess.kind === 'theory' ? 'Learn session complete' : 'Play session complete')) + '</h1><div class="stars" style="color:#ffd93d">' + stars + ' ⭐</div>' +
+      h = kid ? '<div class="card center"><div class="topico" style="font-size:80px">🐥🎉</div><div class="stars party" style="color:#ffd93d;font-size:40px">' + stars_(sess) + ' ⭐</div><div class="stickers" style="justify-content:center">' + sess.newly.map(function (n) { return '<div class="sticker">' + n.split(' ')[0] + '</div>'; }).join('') + '</div><p style="font-size:30px">👋 😊</p></div>' : '<div class="card center"><h1>' + (kid ? 'All done for today! 🐥' : (sess.kind === 'theory' ? 'Learn session complete' : 'Play session complete')) + '</h1><div class="stars" style="color:#ffd93d">' + stars + ' ⭐</div>' +
         '<p class="mut">' + sess.results.length + ' questions · about ' + Math.max(1, Math.round(secs / 60)) + ' min</p>' +
         (sess.newly.length ? '<p>🎉 New stickers: <b>' + sess.newly.map(esc).join(', ') + '</b></p>' : '') +
         '<p class="mut small">Practised: ' + Object.keys(seen).map(skillTitle).map(esc).join(' · ') + '</p>' +
@@ -678,7 +762,7 @@
         (kid ? '<p>See you tomorrow!</p>' : '') + '</div>';
     }
     save();
-    show(h + '<button class="big" data-a="home">Back to home</button>'); if (p.voice && kid) say('All done for today. See you tomorrow!');
+    show(h + '<button class="big' + (kid ? ' bigicon' : '') + '" data-a="home">' + bt(p, '🏠', 'Back to home') + '</button>'); if (p.voice && kid) say('Hooray! You are all done for today! Great job! See you tomorrow! Bye bye!');
     sess = null; cur = null;
   }
 
@@ -735,7 +819,7 @@
     createprofile: function () {
       var nm = document.getElementById('obname'); if (nm) ob.name = nm.value;
       var name = (ob.name || '').trim() || 'Learner';
-      var p = { id: 'p' + Date.now(), name: name, age: ob.age, reading: ob.reading, input: ob.input, keys: ob.keys, voice: ob.age === '4-7', states: {}, lessons: {}, counter: 0, sessions: 0, seconds: 0, created: Date.now() };
+      var p = { id: 'p' + Date.now(), name: name, age: ob.age, reading: ob.reading, input: ob.input, keys: ob.keys, voice: ob.age === '4-7' || ob.reading === 'none', states: {}, lessons: {}, counter: 0, sessions: 0, seconds: 0, created: Date.now() };
       store.profiles.push(p); store.current = p.id; save(); viewHome();
     },
     midi: function () { connectMIDI(); },
@@ -760,12 +844,14 @@
     next: function () { nextExercise(); },
     quit: function () { clearTimers(); Input.handler = null; sess = null; cur = null; viewHome(); },
     listen: function () { playDemo(); },
+    sayopt: function (d) { var o = cur.ex.options[+d.i]; if (o) say(o.text); },
+    hearagain: function () { var p = prof(); if (lesson) { var st = lesson.skill.lesson[lesson.i]; say(isKid(p) ? st.kid : st.text); } else if (cur && cur.ex) say(isKid(p) ? cur.ex.kid : cur.ex.prompt); },
     playopt: function (d) { var o = cur.ex.options[+d.i]; if (o && o.play) playSpec(o.play); },
     rstart: function () { startRhythm(); },
     setupskip: function () { sess.setupShown[cur.skill.id] = true; renderExercise(); },
     settings: settingsModal,
     setvoice: function (d) { prof().voice = d.v === '1'; save(); settingsModal(); },
-    setreading: function (d) { prof().reading = d.v; save(); settingsModal(); },
+    setreading: function (d) { var pp = prof(); pp.reading = d.v; if (d.v === 'none') pp.voice = true; save(); settingsModal(); },
     setinput: function (d) { prof().input = d.v; save(); viewHome(); },
     parent: function () { parentGate(); },
     gateok: function () { var v = +document.getElementById('gate').value; if (v === window._gate) viewParent(); else { alert('Not quite. Ask a grown-up.'); parentGate(); } },

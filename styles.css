@@ -82,3 +82,22 @@ body.kid .sticker { width:56px; height:56px; font-size:34px; }
 .kindbtn:disabled { opacity:.45; }
 .pill.theory { background:#2a2f4a; color:#9bb0ff; } .pill.practical { background:#3a2f26; color:#ffb98a; }
 .kbnote { font-size:13px; color:var(--mut); margin:6px 2px; }
+
+/* kid mode: pictures first, words are for the grown-up */
+.bigwords { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.fchip { background:#ffd93d; color:#222; font-weight:900; font-size:34px; padding:2px 16px; border-radius:14px; }
+.caption { font-size:13px; font-weight:500; color:#8b93a1; margin-top:6px; }
+.caption .focus { color:#ffd93d; font-weight:800; }
+.guide { cursor:pointer; }
+.topico { font-size:56px; text-align:center; line-height:1.1; }
+.icobtn { font-size:30px; }
+button.bigicon { font-size:40px; padding:10px 34px; min-width:110px; }
+.wiggle { animation:wig .4s ease 3; display:inline-block; }
+@keyframes wig { 0%,100% { transform:rotate(0); } 25% { transform:rotate(-14deg) scale(1.15); } 75% { transform:rotate(14deg) scale(1.15); } }
+.party { animation:pop .5s ease; font-size:42px; text-align:center; }
+@keyframes pop { 0% { transform:scale(.3); } 70% { transform:scale(1.25); } 100% { transform:scale(1); } }
+.newsticker { font-size:64px; text-align:center; animation:pop .7s ease; }
+.kidopts .optbtn.pic { font-size:44px; padding:10px 12px; min-height:84px; }
+.kidopts .optbtn:not(.pic):not(.blocks) { font-size:26px; font-weight:800; }
+.optpic { font-size:46px; line-height:1.1; }
+body.kid .feedback { font-size:34px; text-align:center; }
