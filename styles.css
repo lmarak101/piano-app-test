@@ -34,7 +34,7 @@ body.kid .prompt { font-size:26px; }
 .feedback.ok { color:var(--ok); } .feedback.bad { color:var(--warn); }
 .staffwrap { overflow-x:auto; background:#f6f3ea; border-radius:10px; padding:4px 0; margin-bottom:10px; }
 .staffwrap svg { display:block; }
-.kbwrap { background:#0e0f12; border-radius:10px; padding:6px; touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+.kbwrap { position:relative; background:#0e0f12; border-radius:10px; padding:6px; touch-action:manipulation; user-select:none; -webkit-user-select:none; }
 .kbwrap svg { width:100%; height:auto; display:block; }
 .k-w { fill:#f4f4f4; stroke:#444; stroke-width:.6; } .k-b { fill:#15171b; stroke:#000; stroke-width:.6; }
 .k-target { fill:#ffe08a !important; } .k-ok { fill:#3ecf8e !important; } .k-bad { fill:#ff6b6b !important; }
@@ -101,3 +101,7 @@ button.bigicon { font-size:40px; padding:10px 34px; min-width:110px; }
 .kidopts .optbtn:not(.pic):not(.blocks) { font-size:26px; font-weight:800; }
 .optpic { font-size:46px; line-height:1.1; }
 body.kid .feedback { font-size:34px; text-align:center; }
+
+.finger { position:absolute; font-size:38px; line-height:1; transform:translate(-50%,0); pointer-events:none; animation:poke .8s ease-in-out infinite; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+@keyframes poke { 0%,100% { transform:translate(-50%,0); } 50% { transform:translate(-50%,-10px); } }
+.replay.attn { animation:pop .6s ease 3; background:#ffd93d; }

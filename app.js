@@ -71,13 +71,16 @@
   function focusWords(text) { return parseFocus(text).filter(function (x) { return x.focus; }).map(function (x) { return x.t; }); }
   function plain(text) { return text.replace(/\*/g, ''); }
   function utter(text, rate, pitch) {
+    // Never let a voice read punctuation aloud ("exclamation"): drop leading marks and marks-only pieces.
+    text = String(text).replace(/^[\s.,!?;:\-–—]+/, '').replace(/\s+/g, ' ');
+    if (!/[A-Za-z0-9]/.test(text)) return;
     var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = rate; u.pitch = pitch; u.volume = 1;
     var v = bestVoice(); if (v) u.voice = v; speechSynthesis.speak(u);
   }
   // Kids hear the sentence with the important word slowed down and lifted, and the written
   // sentences themselves come back to that word in different ways.
-  function say(text) {
-    var p = prof(); if (!p || !p.voice || !text || !('speechSynthesis' in window)) return;
+  function say(text, force) {
+    var p = prof(); if (!p || (!p.voice && !force) || !text || !('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
       if (!isKid(p)) { utter(plain(text), 1, 1); return; }
@@ -89,16 +92,17 @@
     } catch (e) {}
   }
   var PRAISE = ['Yay! Great job! You did it!', 'Wow! Super! You are a star!', 'Hooray! Well done! Great playing!', 'Amazing! You did it, you did it!'];
-  var TRYAGAIN = ['Oops! That is okay! Try again! You can do it!', 'Almost! Try again! You can do it!', 'Nice try! One more time! You can do it!'];
+  var TRYAGAIN = ['Oops! That is okay. Try again. You can do it!', 'Almost! Have another go. You can do it!', 'Nice try! One more time. You can do it!', 'Not that one, but you are close. Try again!'];
+  var CUES = ['Your turn!', 'Ready? Here we go!', 'Let us try another one!', 'Off you go!'];
   var nudgeText = null, nudgeCount = 0, nudgeTimer = null;
   function armNudge(text) {
     clearTimeout(nudgeTimer); nudgeTimer = null;
     if (text !== undefined) { nudgeText = text; nudgeCount = 0; }
-    var p = prof(); if (!nudgeText || !p || !isKid(p) || !p.voice || nudgeCount >= 2) return;
+    var p = prof(); if (!nudgeText || !p || !isKid(p) || !p.voice || nudgeCount >= 1) return;
     nudgeTimer = setTimeout(function () {
       nudgeCount++; var m = document.querySelector('.mascot'); if (m) { m.classList.add('wiggle'); setTimeout(function () { m.classList.remove('wiggle'); }, 1200); }
-      say(nudgeText); armNudge();
-    }, 11000);
+      var r = document.querySelector('.replay'); if (r) { r.classList.add('attn'); setTimeout(function () { r.classList.remove('attn'); }, 3000); }
+    }, 12000);
   }
   function stopNudge() { clearTimeout(nudgeTimer); nudgeTimer = null; nudgeText = null; }
   var timers = [];
@@ -218,14 +222,24 @@
     while (hi < mx) hi += 12;
     return [lo, hi];
   }
+  function placeFinger(root, el) {
+    if (el._f) return;
+    var rr = root.getBoundingClientRect(), kr = el.getBoundingClientRect(); if (!kr.width) return;
+    var f = document.createElement('div'); f.className = 'finger'; f.textContent = '👆';
+    f.style.left = (kr.left - rr.left + kr.width / 2) + 'px'; f.style.top = (kr.bottom - rr.top - 14) + 'px';
+    root.appendChild(f); el._f = f;
+  }
+  function dropFinger(el) { if (el._f) { el._f.remove(); el._f = null; } }
   function lightKey(root, note, cls, ms) {
     var els = root.querySelectorAll('rect[data-note="' + note + '"]'), r = els[0];
     if (!r) return;
-    r.classList.add(cls); if (ms) setTimeout(function () { r.classList.remove(cls); }, ms);
+    r.classList.add(cls); if (cls === 'k-target') placeFinger(root, r);
+    if (ms) setTimeout(function () { r.classList.remove(cls); dropFinger(r); }, ms);
   }
-  function clearHint(root) { var l = root.querySelectorAll('.k-target'); for (var i = 0; i < l.length; i++) l[i].classList.remove('k-target'); }
+  function clearHint(root) { var l = root.querySelectorAll('.k-target'); for (var i = 0; i < l.length; i++) { l[i].classList.remove('k-target'); dropFinger(l[i]); } var fs = root.querySelectorAll('.finger'); for (var j = 0; j < fs.length; j++) fs[j].remove(); }
   function bindKeys(root) {
     var svg = root && root.querySelector('svg'); if (!svg) return;
+    var lit = svg.querySelectorAll('.k-target'); if (lit.length && lit.length <= 2) for (var q = 0; q < lit.length; q++) placeFinger(root, lit[q]);
     svg.addEventListener('pointerdown', function (e) {
       var n = e.target && e.target.getAttribute && e.target.getAttribute('data-note'); if (!n) return;
       e.preventDefault(); n = +n; tone(n, 0.6); lightKey(root, n, 'k-ok', 140); emit(n, e.timeStamp > 0 ? e.timeStamp : performance.now());
@@ -406,7 +420,7 @@
     var need = st.tap ? st.tap.length : 0;
     L.met = st.tap ? st.tap.map(function () { return false; }) : [];
     var text = kid ? st.kid : st.text;
-    var h = '<div class="row spread"><button class="ghost" data-a="lessonexit">✕</button><div class="dots">' + dots + '</div><button class="ghost" data-a="lessonhear">🔊</button></div>' +
+    var h = '<div class="row spread"><button class="ghost" data-a="lessonexit">✕</button><div class="dots">' + dots + '</div><div class="row" style="gap:6px"><button class="ghost replay" data-a="hearagain">🔁</button>' + (st.play ? '<button class="ghost" data-a="lessonhear">🔊</button>' : '') + '</div></div>' +
       '<div class="card" style="margin-top:10px">' + (kid ? '<div class="topico">' + L.skill.sticker + '</div>' : '<div class="mut small">Lesson: ' + esc(L.skill.title) + ' · step ' + (L.i + 1) + ' of ' + n + '</div><h2 style="margin-top:6px">' + esc(st.title) + '</h2>') +
       (kid ? guide(p, text) : '<p class="prompt" style="font-size:18px;font-weight:600">' + esc(text) + '</p>') +
       '<div id="vis">' + visHTML(st.vis, p) + '</div><div id="fb" class="feedback"></div></div>' +
@@ -439,7 +453,7 @@
   function startSession(opts) {
     var p = prof(); opts = opts || {};
     var kind = opts.kind || C.skillById(opts.skillOnly).kind;
-    sess = { kind: kind, total: opts.testOut ? 3 : E.sessionLength(p.age, kind), n: 0, results: [], started: Date.now(), skillOnly: opts.skillOnly || null, testOut: !!opts.testOut, newly: [], notes: [], setupShown: {} };
+    sess = { kind: kind, total: opts.testOut ? 3 : E.sessionLength(p.age, kind), n: 0, results: [], started: Date.now(), skillOnly: opts.skillOnly || null, testOut: !!opts.testOut, newly: [], notes: [], setupShown: {}, spoken: {} };
     audio(); nextExercise();
   }
   function nextExercise() {
@@ -473,7 +487,7 @@
     var dots = '';
     for (var i = 0; i < sess.total; i++) dots += '<i class="' + (i < sess.n ? 'done' : (i === sess.n ? 'cur' : '')) + '"></i>';
     return '<div class="row spread"><button class="ghost" data-a="quit">✕</button><div class="dots">' + dots + '</div><div class="row" style="gap:6px">' +
-      (cur.skill.lesson ? '<button class="ghost" data-a="relesson">📖</button>' : '') + '<button class="ghost" data-a="listen">🔊</button></div></div>' +
+      (cur.skill.lesson ? '<button class="ghost" data-a="relesson">📖</button>' : '') + '<button class="ghost replay" data-a="hearagain">🔁</button><button class="ghost" data-a="listen">🔊</button></div></div>' +
       '<div class="card" style="margin-top:10px">' + (isKid(prof()) ? '<div class="topico">' + cur.skill.sticker + '</div>' : '<div class="mut small">' + (cur.skill.kind === 'theory' ? '📖 Learn' : '🎹 Play') + ' · ' + esc(cur.skill.title) + ' · ' + modeLabel(cur.mode) + (sess.testOut ? ' · Test out' : '') + '</div>') + inner + '</div>';
   }
   function promptHTML(p, ex) {
@@ -489,7 +503,11 @@
     if (ex.type === 'quiz') { renderQuiz(); if (p.voice) say(isKid(p) ? ex.kid : ex.prompt); armNudge(isKid(p) ? ex.kid : null); return; }
     if (needSetup()) { renderSetup(); return; }
     if (ex.type === 'rhythm') renderRhythm(); else renderNotes();
-    if (p.voice) say(isKid(p) ? ex.kid : ex.prompt);
+    if (p.voice) {
+      if (isKid(p) && sess.spoken[cur.skill.id]) say(pick(CUES) + ' ' + focusWords(ex.kid).map(function (w) { return '*' + w + '*'; }).join(' '));
+      else say(isKid(p) ? ex.kid : ex.prompt);
+    }
+    sess.spoken[cur.skill.id] = true;
     armNudge(isKid(p) ? ex.kid : null);
   }
 
@@ -535,7 +553,7 @@
         if (E.checkAccept(ex.accept, note)) { lightKey(kb, note, 'k-ok', 400); cur.done = true; finishQuiz(); }
         else {
           cur.tries++; lightKey(kb, note, 'k-bad', 300);
-          var fb = document.getElementById('fb'); fb.className = 'feedback bad'; fb.textContent = isKid(p) ? '🙂 Try again!' : 'Not quite. Try again.'; if (isKid(p)) say(pick(TRYAGAIN) + ' ' + (cur.ex.kid || ''));
+          var fb = document.getElementById('fb'); fb.className = 'feedback bad'; fb.textContent = isKid(p) ? '🙂 Try again!' : 'Not quite. Try again.'; if (isKid(p)) say(pick(TRYAGAIN));
           if (cur.tries === 1) lightAnswer(kb);
           if (cur.tries >= 2) { cur.done = true; lightAnswer(kb); finishQuiz(); }
         }
@@ -551,7 +569,7 @@
     var ex = cur.ex, btns = document.querySelectorAll('.optbtn'), fb = document.getElementById('fb'), p = prof();
     if (i === ex.correct) { btns[i].classList.add('right'); cur.done = true; finishQuiz(); return; }
     cur.tries++; btns[i].classList.add('wrong'); btns[i].disabled = true;
-    fb.className = 'feedback bad'; fb.textContent = isKid(p) ? '🙂 Try again!' : 'Not quite. Try again.'; if (isKid(p)) say(pick(TRYAGAIN) + ' ' + (cur.ex.kid || ''));
+    fb.className = 'feedback bad'; fb.textContent = isKid(p) ? '🙂 Try again!' : 'Not quite. Try again.'; if (isKid(p)) say(pick(TRYAGAIN));
     if (cur.tries >= 2 || ex.options.length - cur.tries <= 1) { btns[ex.correct].classList.add('right'); cur.done = true; finishQuiz(); }
   }
   function finishQuiz() {
@@ -646,7 +664,7 @@
       lightKey(kb, note, 'k-bad', 300);
       fb.className = 'feedback bad';
       fb.textContent = isKid(p) ? '🙂 Try again!' : (ex.readMode ? 'Not quite. Try again.' : 'Not quite: that was ' + E.noteName(note) + '. Try again.');
-      if (isKid(p) && !r.gaveUp) say(pick(TRYAGAIN) + ' ' + (ex.kid || ''));
+      if (isKid(p) && !r.gaveUp) say(pick(TRYAGAIN));
       if (r.gaveUp) { cur.done = true; revealAndFinish(); return; }
       refreshNotes();
     } else {
@@ -716,8 +734,9 @@
     var p = prof(), st = states(p), sk = cur.skill, fb = document.getElementById('fb'), kid = isKid(p), newSticker = false;
     clearTimers(); Input.handler = null; if (cur.r) cur.r.running = false;
     q = Math.max(0, Math.min(1, q));
-    sess.results.push({ skillId: sk.id, q: q });
-    if (!sess.testOut) {
+    var isRetry = !!cur.retry, lastOne = (isRetry ? sess.n : sess.n + 1) >= sess.total;
+    if (!isRetry) sess.results.push({ skillId: sk.id, q: q });
+    if (!sess.testOut && !isRetry) {
       var before = st[sk.id].mastered;
       st[sk.id] = E.updateSkill(st[sk.id], q, p.counter || 0, cfgFor(p)); p.counter = (p.counter || 0) + 1;
       if (!before && st[sk.id].mastered) { sess.newly.push(sk.sticker + ' ' + sk.title); newSticker = true; }
@@ -726,10 +745,12 @@
     var s3 = E.stars(q), starStr = '★★★'.slice(0, s3) + '☆☆☆'.slice(0, 3 - s3);
     fb.className = 'feedback ' + (q >= 0.6 ? 'ok' : 'bad');
     fb.innerHTML = (kid ? '' : esc(msg || '')) + '<div class="stars' + (kid ? ' party' : '') + '" style="color:#ffd93d">' + starStr + '</div>' + (newSticker ? '<div class="newsticker">' + (kid ? '' : '🎉 New sticker: ') + sk.sticker + (kid ? '' : ' ' + esc(sk.title) + '!') + '</div>' : '');
-    document.getElementById('ctl').innerHTML = '<button class="big' + (kid ? ' bigicon' : '') + '" data-a="next">' + bt(p, sess.n + 1 >= sess.total ? '⭐' : '▶', sess.n + 1 >= sess.total ? 'Finish' : 'Next ▶') + '</button>';
+    document.getElementById('ctl').innerHTML = '<button class="big' + (kid ? ' bigicon' : '') + '" data-a="next">' + bt(p, lastOne ? '⭐' : '▶', lastOne ? 'Finish' : 'Next ▶') + '</button>' + (q < 0.9 ? '<button class="ghost big" style="margin-top:8px" data-a="retry">' + bt(p, '🔄', '🔄 Try this one again') + '</button>' : '');
     if (p.voice && kid) say((newSticker ? 'You got a new sticker! ' : '') + (q >= 0.6 ? pick(PRAISE) : 'Good try! You are learning! Let us keep going!'));
-    sess.n++;
-    var dots = document.querySelectorAll('.dots i'); if (dots[sess.n - 1]) dots[sess.n - 1].className = 'done'; if (dots[sess.n]) dots[sess.n].className = 'cur';
+    if (!isRetry) {
+      sess.n++;
+      var dots = document.querySelectorAll('.dots i'); if (dots[sess.n - 1]) dots[sess.n - 1].className = 'done'; if (dots[sess.n]) dots[sess.n].className = 'cur';
+    }
   }
   function playDemo() {
     if (!cur) return; var ex = cur.ex;
@@ -845,7 +866,8 @@
     quit: function () { clearTimers(); Input.handler = null; sess = null; cur = null; viewHome(); },
     listen: function () { playDemo(); },
     sayopt: function (d) { var o = cur.ex.options[+d.i]; if (o) say(o.text); },
-    hearagain: function () { var p = prof(); if (lesson) { var st = lesson.skill.lesson[lesson.i]; say(isKid(p) ? st.kid : st.text); } else if (cur && cur.ex) say(isKid(p) ? cur.ex.kid : cur.ex.prompt); },
+    hearagain: function () { var p = prof(); if (lesson) { var st = lesson.skill.lesson[lesson.i]; say(isKid(p) ? st.kid : st.text, true); } else if (cur && cur.ex) say(isKid(p) ? cur.ex.kid : cur.ex.prompt, true); },
+    retry: function () { var c = cur; clearTimers(); cur = { skill: c.skill, ex: c.ex, mode: c.mode, misses: 0, tries: 0, hinted: false, done: false, demoing: false, retry: true }; renderExercise(); },
     playopt: function (d) { var o = cur.ex.options[+d.i]; if (o && o.play) playSpec(o.play); },
     rstart: function () { startRhythm(); },
     setupskip: function () { sess.setupShown[cur.skill.id] = true; renderExercise(); },
