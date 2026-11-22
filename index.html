@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piano App: MIDI Test</title>
+<style>
+  :root { --bg:#14161a; --card:#1e2127; --fg:#eef0f3; --mut:#9aa1ad; --acc:#4ea1ff; --ok:#3ecf8e; --bad:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.4 system-ui,sans-serif; padding:12px; }
+  h1 { font-size:18px; margin:0 0 8px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .card { background:var(--card); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .grow { flex:1 1 220px; }
+  button { background:var(--acc); color:#04121f; border:0; border-radius:10px; padding:12px 16px; font-size:16px; font-weight:600; }
+  button.ghost { background:#2b3038; color:var(--fg); }
+  .status { font-size:14px; padding:8px 10px; border-radius:8px; background:#2b3038; color:var(--mut); margin-top:8px; }
+  .status.ok { color:var(--ok); } .status.bad { color:var(--bad); }
+  .big { font-size:56px; font-weight:700; line-height:1; }
+  .mut { color:var(--mut); font-size:13px; }
+  .bar { height:10px; background:#2b3038; border-radius:5px; overflow:hidden; margin-top:6px; }
+  .bar > i { display:block; height:100%; width:0; background:var(--acc); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td { padding:3px 0; } td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  #log { font:12px/1.5 ui-monospace,monospace; color:var(--mut); max-height:170px; overflow:auto; white-space:pre; }
+  svg { width:100%; height:auto; display:block; touch-action:manipulation; }
+  .w { fill:#f3f3f3; stroke:#555; stroke-width:.5; } .w.on { fill:var(--acc); }
+  .b { fill:#111; } .b.on { fill:#1c6fd1; }
+  label { font-size:14px; }
+</style>
+</head>
+<body>
+<h1>Piano App: MIDI test</h1>
+
+<div class="card">
+  <div class="row">
+    <button id="connect">Connect MIDI keyboard</button>
+    <button id="sound" class="ghost">Sound: off</button>
+    <button id="reset" class="ghost">Reset stats</button>
+  </div>
+  <div id="status" class="status">Plug in your digital piano by USB-C (use an OTG/USB-C cable), turn it on, then tap Connect.</div>
+  <div id="devices" class="mut" style="margin-top:8px"></div>
+</div>
+
+<div class="row">
+  <div class="card grow">
+    <div class="mut">Last note</div>
+    <div class="big" id="note">-</div>
+    <div class="mut" id="noteinfo">MIDI number -, velocity -</div>
+    <div class="bar"><i id="velbar"></i></div>
+    <div class="mut" id="dyn" style="margin-top:4px">dynamics: -</div>
+  </div>
+  <div class="card grow">
+    <table>
+      <tr><td>Notes played</td><td id="s_count">0</td></tr>
+      <tr><td>Lowest / highest key seen</td><td id="s_range">-</td></tr>
+      <tr><td>Average velocity</td><td id="s_avg">-</td></tr>
+      <tr><td>Time since previous note</td><td id="s_ioi">-</td></tr>
+      <tr><td>Sustain pedal (CC64)</td><td id="s_ped">-</td></tr>
+      <tr><td>Notes held now</td><td id="s_held">0</td></tr>
+      <tr><td>Messages from piano</td><td id="s_msgs">0</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <svg id="kb" viewBox="0 0 1000 150" aria-label="Piano keyboard"></svg>
+  <div class="mut" style="margin-top:6px">Keys light up when you play. You can also tap the keys on screen to check the display without a piano.</div>
+</div>
+
+<div class="card">
+  <div class="mut">Recent messages</div>
+  <div id="log"></div>
+</div>
+
+<script>
+(function () {
+  var NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  var LOW = 21, HIGH = 108; // 88 keys, A0 to C8
+  var $ = function (id) { return document.getElementById(id); };
+  function nn(n) { return NAMES[n % 12] + (Math.floor(n / 12) - 1); }
+  function isBlack(n) { return [1,3,6,8,10].indexOf(n % 12) >= 0; }
+
+  var st;
+  function resetStats() {
+    st = { count:0, lo:null, hi:null, velSum:0, last:0, held:{}, msgs:0, pedal:null };
+    render(); $('note').textContent = '-'; $('noteinfo').textContent = 'MIDI number -, velocity -';
+    $('velbar').style.width = '0'; $('dyn').textContent = 'dynamics: -'; $('log').textContent = '';
+    clearKeys();
+  }
+
+  // ---- keyboard drawing ----
+  var keyEls = {};
+  (function drawKeyboard() {
+    var svg = $('kb'), ns = 'http://www.w3.org/2000/svg';
+    var whites = []; for (var n = LOW; n <= HIGH; n++) if (!isBlack(n)) whites.push(n);
+    var ww = 1000 / whites.length, pos = {};
+    whites.forEach(function (n, i) {
+      var r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', i * ww); r.setAttribute('y', 0); r.setAttribute('width', ww); r.setAttribute('height', 150);
+      r.setAttribute('class', 'w'); svg.appendChild(r); keyEls[n] = r; pos[n] = i * ww;
+      attach(r, n);
+    });
+    for (var m = LOW; m <= HIGH; m++) if (isBlack(m)) {
+      var x = pos[m - 1] + ww * 0.68;
+      var b = document.createElementNS(ns, 'rect');
+      b.setAttribute('x', x); b.setAttribute('y', 0); b.setAttribute('width', ww * 0.64); b.setAttribute('height', 92);
+      b.setAttribute('class', 'b'); svg.appendChild(b); keyEls[m] = b; attach(b, m);
+    }
+  })();
+  function attach(el, n) {
+    el.addEventListener('pointerdown', function (e) { e.preventDefault(); handle(0x90, n, 80, 'screen'); });
+    el.addEventListener('pointerup', function () { handle(0x80, n, 0, 'screen'); });
+    el.addEventListener('pointerleave', function () { if (st.held[n]) handle(0x80, n, 0, 'screen'); });
+  }
+  function lit(n, on) { var el = keyEls[n]; if (!el) return; var base = isBlack(n) ? 'b' : 'w'; el.setAttribute('class', base + (on ? ' on' : '')); }
+  function clearKeys() { for (var n in keyEls) lit(+n, false); }
+
+  // ---- sound (optional) ----
+  var soundOn = false, actx = null, voices = {};
+  $('sound').onclick = function () {
+    soundOn = !soundOn; $('sound').textContent = 'Sound: ' + (soundOn ? 'on' : 'off');
+    try { if (soundOn && !actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx && actx.resume) actx.resume(); } catch (e) { soundOn = false; $('sound').textContent = 'Sound: unavailable'; }
+  };
+  function tone(n, v, on) {
+    if (!soundOn || !actx) return;
+    try {
+      if (on) {
+        var o = actx.createOscillator(), g = actx.createGain();
+        o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (n - 69) / 12);
+        g.gain.value = 0.05 + 0.25 * (v / 127); o.connect(g); g.connect(actx.destination); o.start();
+        voices[n] = { o: o, g: g };
+      } else if (voices[n]) { voices[n].g.gain.setTargetAtTime(0, actx.currentTime, 0.05); voices[n].o.stop(actx.currentTime + 0.3); delete voices[n]; }
+    } catch (e) {}
+  }
+
+  // ---- message handling ----
+  function dynLabel(v) {
+    if (v < 25) return 'ppp'; if (v < 40) return 'pp'; if (v < 55) return 'p'; if (v < 70) return 'mp';
+    if (v < 85) return 'mf'; if (v < 100) return 'f'; if (v < 115) return 'ff'; return 'fff';
+  }
+  function log(s) { var el = $('log'); var lines = (el.textContent ? el.textContent.split('\n') : []); lines.push(s); if (lines.length > 40) lines = lines.slice(-40); el.textContent = lines.join('\n'); el.scrollTop = el.scrollHeight; }
+  function render() {
+    $('s_count').textContent = st.count;
+    $('s_range').textContent = st.lo === null ? '-' : nn(st.lo) + ' / ' + nn(st.hi);
+    $('s_avg').textContent = st.count ? Math.round(st.velSum / st.count) : '-';
+    $('s_ped').textContent = st.pedal === null ? 'not seen' : (st.pedal >= 64 ? 'down' : 'up');
+    $('s_held').textContent = Object.keys(st.held).length;
+    $('s_msgs').textContent = st.msgs;
+  }
+  function handle(status, d1, d2, src) {
+    st.msgs++;
+    var cmd = status & 0xf0;
+    if (cmd === 0x90 && d2 > 0) {
+      var now = performance.now();
+      if (st.last) $('s_ioi').textContent = Math.round(now - st.last) + ' ms';
+      st.last = now; st.count++; st.velSum += d2; st.held[d1] = true;
+      if (st.lo === null || d1 < st.lo) st.lo = d1;
+      if (st.hi === null || d1 > st.hi) st.hi = d1;
+      $('note').textContent = nn(d1); $('noteinfo').textContent = 'MIDI number ' + d1 + ', velocity ' + d2;
+      $('velbar').style.width = Math.round(d2 / 127 * 100) + '%'; $('dyn').textContent = 'dynamics: ' + dynLabel(d2);
+      lit(d1, true); tone(d1, d2, true);
+      log(now.toFixed(0) + ' ms  ON   ' + nn(d1) + ' (' + d1 + ') vel ' + d2 + (src === 'screen' ? '  [screen]' : ''));
+    } else if (cmd === 0x80 || (cmd === 0x90 && d2 === 0)) {
+      delete st.held[d1]; lit(d1, false); tone(d1, 0, false);
+      log(performance.now().toFixed(0) + ' ms  OFF  ' + nn(d1) + ' (' + d1 + ')' + (src === 'screen' ? '  [screen]' : ''));
+    } else if (cmd === 0xb0) {
+      if (d1 === 64) { st.pedal = d2; log(performance.now().toFixed(0) + ' ms  PEDAL sustain ' + (d2 >= 64 ? 'down' : 'up') + ' (' + d2 + ')'); }
+      else log(performance.now().toFixed(0) + ' ms  CC ' + d1 + ' = ' + d2);
+    } else if (status === 0xfe || status === 0xf8) { st.msgs--; /* active sensing and clock: ignore */ }
+    render();
+  }
+
+  // ---- Web MIDI ----
+  function setStatus(t, cls) { var s = $('status'); s.textContent = t; s.className = 'status' + (cls ? ' ' + cls : ''); }
+  var access = null;
+  function bind() {
+    var names = [];
+    access.inputs.forEach(function (inp) {
+      names.push(inp.name + (inp.manufacturer ? ' (' + inp.manufacturer + ')' : '') + ' [' + inp.state + ']');
+      inp.onmidimessage = function (e) { var d = e.data; handle(d[0], d[1] || 0, d[2] || 0, 'midi'); };
+    });
+    $('devices').textContent = names.length ? 'Inputs: ' + names.join('; ') : '';
+    if (names.length) setStatus('Connected. Play a few notes on your piano.', 'ok');
+    else setStatus('MIDI is allowed, but no keyboard was found. Check the USB-C cable (it must carry data, not just power), turn the piano on, and make sure its USB mode is set to MIDI if it has that setting. Then tap Connect again.', 'bad');
+  }
+  $('connect').onclick = function () {
+    if (!navigator.requestMIDIAccess) {
+      setStatus('This browser or page does not offer Web MIDI. Open this page in Chrome on Android (not inside another app or an embedded viewer). If you opened it from inside the Claude app, download the file and open it directly in Chrome.', 'bad'); return;
+    }
+    setStatus('Asking for MIDI permission...', '');
+    navigator.requestMIDIAccess({ sysex: false }).then(function (a) {
+      access = a; a.onstatechange = bind; bind();
+    }).catch(function (err) {
+      setStatus('MIDI was blocked: ' + (err && err.name ? err.name : 'unknown error') + '. In Chrome, allow the MIDI permission for this page. If this page is shown inside another app or frame, MIDI is often blocked there: open the file directly in Chrome.', 'bad');
+    });
+  };
+  $('reset').onclick = resetStats;
+  resetStats();
+})();
+</script>
+</body>
+</html>
