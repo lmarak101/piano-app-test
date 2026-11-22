@@ -74,8 +74,8 @@
     var u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = rate; u.pitch = pitch; u.volume = 1;
     var v = bestVoice(); if (v) u.voice = v; speechSynthesis.speak(u);
   }
-  // Kids hear the sentence, and the important word said again and again IN the sentence:
-  // "Keys on the left are ... low! ... low! ... low! ... like a big bear."
+  // Kids hear the sentence with the important word slowed down and lifted, and the written
+  // sentences themselves come back to that word in different ways.
   function say(text) {
     var p = prof(); if (!p || !p.voice || !text || !('speechSynthesis' in window)) return;
     try {
@@ -83,7 +83,7 @@
       if (!isKid(p)) { utter(plain(text), 1, 1); return; }
       parseFocus(text).forEach(function (x) {
         var t = x.t.trim(); if (!t) return;
-        if (x.focus) { var w = /^[A-G]$/.test(t) ? t : t.toLowerCase(); utter(w + '!', 0.65, 1.6); utter(w + '!', 0.65, 1.6); utter(w + '!', 0.7, 1.5); }
+        if (x.focus) { var w = /^[A-G]$/.test(t) ? t : t.toLowerCase(); utter(w, 0.6, 1.55); }
         else utter(t, 0.82, 1.25);
       });
     } catch (e) {}

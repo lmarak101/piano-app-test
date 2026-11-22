@@ -25,13 +25,13 @@
   };
 
   var KID_CLUE = {
-    C: 'Find the key called *C*! It is just left of the TWO black keys.',
-    D: 'Find the key called *D*! It is in the MIDDLE of the two black keys.',
-    E: 'Find the key called *E*! It is just right of the TWO black keys.',
-    F: 'Find the key called *F*! It is just left of the THREE black keys.',
-    G: 'Find the key called *G*! It is in the MIDDLE of the three black keys.',
-    A: 'Find the key called *A*! It is in the MIDDLE of the three black keys, on the right.',
-    B: 'Find the key called *B*! It is just right of the THREE black keys.'
+    C: 'Find the key called *C*! The C key is just left of the TWO black keys. Can you press it?',
+    D: 'Find the key called *D*! The D key is in the MIDDLE of the two black keys. Can you press it?',
+    E: 'Find the key called *E*! The E key is just right of the TWO black keys. Can you press it?',
+    F: 'Find the key called *F*! The F key is just left of the THREE black keys. Can you press it?',
+    G: 'Find the key called *G*! The G key is in the MIDDLE of the three black keys. Can you press it?',
+    A: 'Find the key called *A*! The A key is in the MIDDLE of the three black keys, on the right. Can you press it?',
+    B: 'Find the key called *B*! The B key is just right of the THREE black keys. Can you press it?'
   };
 
   /* ---- helpers for building quiz questions ---- */
@@ -63,21 +63,21 @@
       id: 'th1', kind: 'theory', stage: 'Foundations', sticker: '🎹', title: 'Meet the keyboard', prereqs: [], maxLevel: 1, reviewed: false,
       blurb: 'White keys, black keys, and low and high sounds.',
       lesson: [
-        { title: 'This is a piano keyboard', text: 'A piano keyboard has white keys and black keys. Press a key and it makes a sound. Try pressing one now.', kid: 'This is a piano! It has white keys and black keys. Press one!',
+        { title: 'This is a piano keyboard', text: 'A piano keyboard has white keys and black keys. Press a key and it makes a sound. Try pressing one now.', kid: 'This is a piano! A piano has WHITE keys and BLACK keys. Can you press a white key? Now press a black key!',
           vis: { k: 'kb', lo: 60, hi: 72 }, tap: [{ mode: 'any' }] },
-        { title: 'Low sounds and high sounds', text: 'Keys on the left make low, deep sounds. Keys on the right make high, bright sounds. Press a key on the left, then a key on the right.', kid: 'Keys on the left are LOW, like a big bear. Keys on the right are HIGH, like a little bird. Press a low key. Then a high key!',
+        { title: 'Low sounds and high sounds', text: 'Keys on the left make low, deep sounds. Keys on the right make high, bright sounds. Press a key on the left, then a key on the right.', kid: 'The keys on the left make LOW sounds, like a big bear. The keys on the right make HIGH sounds, like a little bird. Can you press a LOW key? Now press a HIGH key!',
           vis: { k: 'kb', lo: 48, hi: 72, zones: [{ lo: 48, hi: 59, color: '#4ea1ff' }, { lo: 60, hi: 72, color: '#ff9f43' }] }, tap: [{ mode: 'range', lo: 48, hi: 55 }, { mode: 'range', lo: 65, hi: 72 }] },
-        { title: 'Going up and down', text: 'Moving to the right, the sounds go UP. Moving to the left, the sounds go DOWN. Press the speaker to listen.', kid: 'Go right and the sound goes UP. Go left and it goes DOWN. Listen!',
+        { title: 'Going up and down', text: 'Moving to the right, the sounds go UP. Moving to the left, the sounds go DOWN. Press the speaker to listen.', kid: 'Listen! Going right makes the sound go UP, like climbing stairs. Going left makes the sound go DOWN, like sliding down.',
           vis: { k: 'kb', lo: 60, hi: 72, light: [60, 62, 64, 65, 67, 69, 71, 72] }, play: { notes: [60, 62, 64, 65, 67, 69, 71, 72] }, auto: true },
-        { title: 'Black keys come in groups', text: 'Look at the black keys. They come in groups of two and groups of three. These groups help us find our way around the keyboard.', kid: 'Look! The black keys come in groups. Two, then three!',
+        { title: 'Black keys come in groups', text: 'Look at the black keys. They come in groups of two and groups of three. These groups help us find our way around the keyboard.', kid: 'Look! The black keys sit in little groups. First a group of TWO. Then a group of THREE.',
           vis: { k: 'kb', lo: 60, hi: 72, light: [61, 63, 66, 68, 70] } },
-        { title: 'The pattern repeats', text: 'The same pattern repeats along the whole keyboard. A full-size piano has 88 keys.', kid: 'The pattern repeats again and again. A big piano has 88 keys!',
+        { title: 'The pattern repeats', text: 'The same pattern repeats along the whole keyboard. A full-size piano has 88 keys.', kid: 'The black keys make the same pattern again and again. Two, then three. Two, then three. A big piano has 88 keys!',
           vis: { k: 'kb', lo: 48, hi: 72 } }
       ],
       gen: function (level, r) {
         var pool = [
-          function () { return tap('Tap a LOW key, one on the left.', 'Tap a LOW key!', { mode: 'range', lo: 48, hi: 55 }, { lo: 48, hi: 72 }); },
-          function () { return tap('Tap a HIGH key, one on the right.', 'Tap a HIGH key!', { mode: 'range', lo: 65, hi: 72 }, { lo: 48, hi: 72 }); },
+          function () { return tap('Tap a LOW key, one on the left.', 'Tap a LOW key! Low keys are on the left.', { mode: 'range', lo: 48, hi: 55 }, { lo: 48, hi: 72 }); },
+          function () { return tap('Tap a HIGH key, one on the right.', 'Tap a HIGH key! High keys are on the right.', { mode: 'range', lo: 65, hi: 72 }, { lo: 48, hi: 72 }); },
           function () { return tap('Tap a black key.', 'Tap a black key!', { mode: 'black' }, { lo: 60, hi: 72 }); },
           function () { return tap('Tap a white key.', 'Tap a white key!', { mode: 'white' }, { lo: 60, hi: 72 }); },
           function () { return choice('Keys on the right of the keyboard make…', 'Keys on the right sound…', 'high sounds', ['low sounds'], r); },
@@ -101,11 +101,11 @@
       id: 'th2', kind: 'theory', stage: 'Foundations', sticker: '🧘', title: 'Sit and shape your hands', prereqs: ['th1'], maxLevel: 0, reviewed: false,
       blurb: 'How to sit, and how to hold your hands and fingers.',
       lesson: [
-        { title: 'Sit tall', text: 'Sit up straight near the front of the chair, with your feet flat on the floor. Your back is tall but relaxed.', kid: 'Sit up tall like a tree. Put your feet flat on the floor.', vis: { k: 'big', text: '🪑' } },
-        { title: 'Loose arms and wrists', text: 'Let your arms hang loose. Your elbows are about level with the keys. Keep your wrists soft, not too high and not too low.', kid: 'Make your arms floppy like noodles. Soft wrists!', vis: { k: 'big', text: '🍜' } },
-        { title: 'Curved fingers', text: 'Curve your fingers as if you are holding a small bubble. Do not flatten them like pancakes.', kid: 'Pretend you hold a tiny bubble. Curvy fingers!', vis: { k: 'big', text: '🫧' } },
-        { title: 'Fingertips and thumbs', text: 'Press the keys with the tips of your fingers. Your thumb rests on its side, not flat.', kid: 'Press with the tips of your fingers. Thumbs sit on their sides.', vis: { k: 'big', text: '👆' } },
-        { title: 'Relax', text: 'If your hands feel tight or sore, stop and shake them out. Playing the piano should never hurt.', kid: 'Tight hands? Shake, shake, shake!', vis: { k: 'big', text: '🙌' } }
+        { title: 'Sit tall', text: 'Sit up straight near the front of the chair, with your feet flat on the floor. Your back is tall but relaxed.', kid: 'Sit up TALL, like a tree. Tall and straight! Now put your feet FLAT on the floor.', vis: { k: 'big', text: '🪑' } },
+        { title: 'Loose arms and wrists', text: 'Let your arms hang loose. Your elbows are about level with the keys. Keep your wrists soft, not too high and not too low.', kid: 'Make your arms FLOPPY like noodles. Noodle arms are soft and loose. Now make your WRISTS soft too!', vis: { k: 'big', text: '🍜' } },
+        { title: 'Curved fingers', text: 'Curve your fingers as if you are holding a small bubble. Do not flatten them like pancakes.', kid: 'Pretend you are holding a tiny BUBBLE. Hold it gently. Your fingers are curvy, because they are holding a bubble!', vis: { k: 'big', text: '🫧' } },
+        { title: 'Fingertips and thumbs', text: 'Press the keys with the tips of your fingers. Your thumb rests on its side, not flat.', kid: 'Press the keys with your FINGERTIPS. The tip of your finger touches the key. Your thumb sits on its side.', vis: { k: 'big', text: '👆' } },
+        { title: 'Relax', text: 'If your hands feel tight or sore, stop and shake them out. Playing the piano should never hurt.', kid: 'Do your hands feel tight? Then SHAKE them out, like drying them after washing. Playing should never hurt!', vis: { k: 'big', text: '🙌' } }
       ],
       gen: function (level, r) {
         var q = [
@@ -122,10 +122,10 @@
       id: 'th3', kind: 'theory', stage: 'Foundations', sticker: '🖐️', title: 'Left hand, right hand, finger numbers', prereqs: ['th2'], maxLevel: 1, reviewed: false,
       blurb: 'Know your left from your right, and number your fingers.',
       lesson: [
-        { title: 'Two hands', text: 'You have a left hand and a right hand. Your right hand is on your right side. Your left hand is on your left side. Wave your right hand!', kid: 'Right hand is on your right. Left hand is on your left. Wave your right hand!', vis: { k: 'hands', hand: 'both' } },
-        { title: 'A trick to remember', text: 'If you mix them up, put a small sticker or a pen mark on your right hand. R is for Right. L is for Left. We use orange for the right hand and blue for the left hand.', kid: 'Put a sticker on your right hand! R is for Right. Orange is right. Blue is left.', vis: { k: 'hands', hand: 'both', sticker: true } },
-        { title: 'Finger numbers', text: 'Each finger has a number. Thumb is 1, pointer is 2, middle is 3, ring is 4 and pinky is 5. Both hands use the same numbers.', kid: 'Thumb is 1. Then 2, 3, 4. Pinky is 5! Wiggle each finger as you count.', vis: { k: 'hands', hand: 'R', names: true } },
-        { title: 'Which hand plays where?', text: 'Your right hand usually plays the higher keys on the right. Your left hand usually plays the lower keys on the left. Tap a key for each hand.', kid: 'Right hand plays the high keys. Left hand plays the low keys. Tap an orange key. Tap a blue key!',
+        { title: 'Two hands', text: 'You have a left hand and a right hand. Your right hand is on your right side. Your left hand is on your left side. Wave your right hand!', kid: 'You have a RIGHT hand and a LEFT hand. Your right hand is on the right side of your body. Can you wave your right hand?', vis: { k: 'hands', hand: 'both' } },
+        { title: 'A trick to remember', text: 'If you mix them up, put a small sticker or a pen mark on your right hand. R is for Right. L is for Left. We use orange for the right hand and blue for the left hand.', kid: 'Here is a trick! Put a sticker on your RIGHT hand. R is for Right. In this game, ORANGE is your right hand, and BLUE is your left hand.', vis: { k: 'hands', hand: 'both', sticker: true } },
+        { title: 'Finger numbers', text: 'Each finger has a number. Thumb is 1, pointer is 2, middle is 3, ring is 4 and pinky is 5. Both hands use the same numbers.', kid: 'Each finger has a NUMBER. Your thumb is number 1. Then 2, 3, 4. Your pinky is number 5. Wiggle each finger as you say its number!', vis: { k: 'hands', hand: 'R', names: true } },
+        { title: 'Which hand plays where?', text: 'Your right hand usually plays the higher keys on the right. Your left hand usually plays the lower keys on the left. Tap a key for each hand.', kid: 'Your RIGHT hand plays the high keys, the orange ones. Your LEFT hand plays the low keys, the blue ones. Can you tap an orange key? Now a blue key!',
           vis: { k: 'kb', lo: 48, hi: 72, zones: [{ lo: 48, hi: 59, color: '#4ea1ff' }, { lo: 60, hi: 72, color: '#ff9f43' }] }, tap: [{ mode: 'range', lo: 48, hi: 59 }, { mode: 'range', lo: 60, hi: 72 }] }
       ],
       gen: function (level, r) {
@@ -134,15 +134,15 @@
             return choice('Which finger is number ' + n + '?', 'Which finger is number ' + n + '?', FINGER_NAMES[n], wrong, r, { abstract: true }); },
           function () { var n = pick([1, 2, 3, 4, 5], r); var wrong = shuffled([1, 2, 3, 4, 5].filter(function (x) { return x !== n; }), r).slice(0, 2).map(String);
             return choice('What number is your ' + FINGER_NAMES[n].toLowerCase() + ' finger?', 'What number is the ' + FINGER_NAMES[n].toLowerCase() + '?', String(n), wrong, r); },
-          function () { return choice('Which hand usually plays the high keys on the right?', 'Which hand plays the HIGH keys?', 'Right hand', ['Left hand'], r); },
-          function () { return choice('Which hand usually plays the low keys on the left?', 'Which hand plays the LOW keys?', 'Left hand', ['Right hand'], r); }
+          function () { return choice('Which hand usually plays the high keys on the right?', 'Which hand plays the HIGH keys, the ones on the right?', 'Right hand', ['Left hand'], r); },
+          function () { return choice('Which hand usually plays the low keys on the left?', 'Which hand plays the LOW keys, the ones on the left?', 'Left hand', ['Right hand'], r); }
         ];
         if (level >= 1) q.push(function () {
           var h = r() < 0.5 ? 'R' : 'L';
-          return choice('Look down at your hands like this. Is this the left or the right hand?', 'Is this the LEFT or the RIGHT hand?', h === 'R' ? 'Right hand' : 'Left hand', [h === 'R' ? 'Left hand' : 'Right hand'], r, { vis: { k: 'hands', hand: h, neutral: true } });
+          return choice('Look down at your hands like this. Is this the left or the right hand?', 'Look at this hand. Is it the LEFT hand or the RIGHT hand?', h === 'R' ? 'Right hand' : 'Left hand', [h === 'R' ? 'Left hand' : 'Right hand'], r, { vis: { k: 'hands', hand: h, neutral: true } });
         }, function () {
           var h = r() < 0.5 ? 'R' : 'L';
-          return choice('The hand colored ' + (h === 'R' ? 'orange' : 'blue') + ' is the…', 'Which hand is ' + (h === 'R' ? 'ORANGE' : 'BLUE') + '?', h === 'R' ? 'Right hand' : 'Left hand', [h === 'R' ? 'Left hand' : 'Right hand'], r, { vis: { k: 'hands', hand: h } });
+          return choice('The hand colored ' + (h === 'R' ? 'orange' : 'blue') + ' is the…', 'Which hand is ' + (h === 'R' ? 'ORANGE' : 'BLUE') + '? Is it the left hand or the right hand?', h === 'R' ? 'Right hand' : 'Left hand', [h === 'R' ? 'Left hand' : 'Right hand'], r, { vis: { k: 'hands', hand: h } });
         });
         return pick(q, r)();
       }
@@ -151,22 +151,22 @@
       id: 'th4', kind: 'theory', stage: 'Foundations', sticker: '🔤', title: 'Black key groups and note names', prereqs: ['th1'], maxLevel: 2, reviewed: false,
       blurb: 'Use the black keys to find C, D, E, F, G, A and B.',
       lesson: [
-        { title: 'Groups of black keys', text: 'The black keys come in a group of two, then a group of three. We use these groups to find the white keys.', kid: 'Two black keys, then three black keys. They are our map!',
+        { title: 'Groups of black keys', text: 'The black keys come in a group of two, then a group of three. We use these groups to find the white keys.', kid: 'Two black keys, then three black keys. These groups are our MAP. The map helps us find every note!',
           vis: { k: 'kb', lo: 60, hi: 72, light: [61, 63, 66, 68, 70] } },
-        { title: 'The music alphabet', text: 'Notes are named with the letters A B C D E F G. After G we start again at A. Press the speaker to hear them going up.', kid: 'Notes have letter names: A B C D E F G. Then we start again!',
+        { title: 'The music alphabet', text: 'Notes are named with the letters A B C D E F G. After G we start again at A. Press the speaker to hear them going up.', kid: 'Every key has a LETTER name. A, B, C, D, E, F, G. After G, we start again at A.',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true }, play: { notes: [60, 62, 64, 65, 67, 69, 71, 72] }, auto: true },
-        { title: 'Find C', text: 'C is the white key just left of the two black keys. Tap a C. The C near the middle of the piano is called Middle C.', kid: '*C* is just left of the TWO black keys. Tap a *C*! *C*!',
+        { title: 'Find C', text: 'C is the white key just left of the two black keys. Tap a C. The C near the middle of the piano is called Middle C.', kid: 'Let us find *C*! The C key sits just left of the TWO black keys. Can you tap a C?',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true, light: [60, 72] }, tap: [{ mode: 'pc', pcs: [0] }] },
-        { title: 'Find D and E', text: 'D sits in the middle of the two black keys. E is just right of them. Tap a D.', kid: '*D* is in the MIDDLE of the two black keys. Tap a *D*! *D*!',
+        { title: 'Find D and E', text: 'D sits in the middle of the two black keys. E is just right of them. Tap a D.', kid: 'Now let us find *D*! The D key sits in the MIDDLE of the two black keys. Can you tap a D?',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true, light: [62] }, tap: [{ mode: 'pc', pcs: [2] }] },
-        { title: 'Find F, G, A and B', text: 'F is just left of the three black keys. G and A sit between them. B is just right of the three black keys. Tap an F.', kid: '*F* is just left of the THREE black keys. Tap an *F*! *F*!',
+        { title: 'Find F, G, A and B', text: 'F is just left of the three black keys. G and A sit between them. B is just right of the three black keys. Tap an F.', kid: 'Now let us find *F*! The F key sits just left of the THREE black keys. Can you tap an F?',
           vis: { k: 'kb', lo: 60, hi: 72, labels: true, light: [65, 67, 69, 71] }, tap: [{ mode: 'pc', pcs: [5] }] }
       ],
       gen: function (level, r) {
         if (level >= 1 && r() < 0.2) return choice('What letter comes after G?', 'What letter comes after G?', 'A', ['H', 'B'], r, { abstract: true });
         var pool = level === 0 ? ['C', 'F'] : (level === 1 ? ['C', 'D', 'E', 'F', 'G'] : ['C', 'D', 'E', 'F', 'G', 'A', 'B']);
         var n = pick(pool, r);
-        return tap('Tap a note called ' + n + '.', 'Tap the key called *' + n + '*! *' + n + '*!', { mode: 'pc', pcs: [WHITE[n] % 12] }, { lo: 60, hi: 84 }, { nameOnly: n });
+        return tap('Tap a note called ' + n + '.', 'Tap the key called *' + n + '*. Where is the ' + n + ' key? Tap it!', { mode: 'pc', pcs: [WHITE[n] % 12] }, { lo: 60, hi: 84 }, { nameOnly: n });
       }
     },
 
@@ -177,7 +177,7 @@
       gen: function () {
         return { type: 'find', targets: [60], pitchClassOnly: true,
           prompt: 'Find a C on your piano. It is the white key just left of the two black keys.',
-          kid: 'Find *C*! It is just left of the TWO black keys. *C*! Press *C*!',
+          kid: 'Find *C*! The C key is just left of the TWO black keys. Can you press a C?',
           voice: 'Find the note C on your piano. It is the white key just left of the two black keys.' };
       }
     },
@@ -198,7 +198,7 @@
         var pool = level === 0 ? ['C', 'D', 'E'] : (level === 1 ? ['C', 'D', 'E', 'F', 'G'] : ['C', 'D', 'E', 'F', 'G', 'A', 'B']);
         var n = pick(pool, r);
         return { type: 'find', targets: [WHITE[n]], pitchClassOnly: true,
-          prompt: 'Play the note ' + n + '.', kid: 'Play the key called *' + n + '*! Press *' + n + '*!', voice: 'Find the note called ' + n + '.', nameOnly: n };
+          prompt: 'Play the note ' + n + '.', kid: 'Play the key called *' + n + '*. Can you find the ' + n + ' key and press it?', voice: 'Find the note called ' + n + '.', nameOnly: n };
       }
     },
     {
@@ -217,20 +217,20 @@
         return { type: 'seq', targets: o.t, fingers: o.f, hand: 'R', clef: 'treble', showStaff: true, prompt: o.s, kid: o.k, voice: o.s, hint: true,
           setup: { hand: 'R', fingerNotes: up, confirmNote: 60, title: 'Right hand: get ready',
             text: 'Put your right thumb (1) on Middle C. Rest one finger on each of the next white keys: 2 on D, 3 on E, 4 on F and 5 on G. Then press the key under your thumb.',
-            kid: 'Right hand! Thumb on the red key. One finger on each key. Press under your thumb!' } };
+            kid: 'This is your RIGHT hand. Put your thumb on the red key. Then put one finger on each key. Now press the key under your thumb!' } };
       }
     },
     {
       id: 'th5', kind: 'theory', stage: 'Foundations', sticker: '⏱️', title: 'The beat and the metronome', prereqs: ['th1'], maxLevel: 1, reviewed: false,
       blurb: 'Learn about the steady beat, counting, and the metronome.',
       lesson: [
-        { title: 'Music has a beat', text: 'Most music has a steady beat, like a clock ticking or a heartbeat. You can tap your foot to it. Press the speaker and tap along.', kid: 'Music has a beat, like a heartbeat. Tap, tap, tap along!',
+        { title: 'Music has a beat', text: 'Most music has a steady beat, like a clock ticking or a heartbeat. You can tap your foot to it. Press the speaker and tap along.', kid: 'Music has a BEAT, like a heartbeat. The beat is steady. Tap a key along with the beat!',
           vis: { k: 'beats', count: 4 }, play: { clicks: { bpm: 60, count: 4 } }, auto: true },
-        { title: 'Counting the beat', text: 'We count beats like this: 1 2 3 4, 1 2 3 4. Listen and count along.', kid: 'Count with me: 1, 2, 3, 4!',
+        { title: 'Counting the beat', text: 'We count beats like this: 1 2 3 4, 1 2 3 4. Listen and count along.', kid: 'Let us COUNT the beats together. One, two, three, four. Count with me!',
           vis: { k: 'beats', count: 4 }, play: { clicks: { bpm: 60, count: 8 } } },
-        { title: 'The metronome', text: 'A metronome is a tool that ticks a steady beat for you, so you can keep time while you play. Many phones and apps have one. We will use one in this app.', kid: 'A metronome is a ticking helper. It keeps the beat for you!',
+        { title: 'The metronome', text: 'A metronome is a tool that ticks a steady beat for you, so you can keep time while you play. Many phones and apps have one. We will use one in this app.', kid: 'A METRONOME is a ticking helper. It ticks to keep the beat steady, so you do not have to.',
           vis: { k: 'big', text: '⏱️' }, play: { clicks: { bpm: 72, count: 4 } } },
-        { title: 'Fast and slow', text: 'How fast or slow the beat is, is called the tempo. We count it in beats per minute (BPM). Fast ticks mean a fast tempo. Slow ticks mean a slow tempo. Listen to slow, then fast.', kid: 'Slow ticks, then fast ticks. Listen!',
+        { title: 'Fast and slow', text: 'How fast or slow the beat is, is called the tempo. We count it in beats per minute (BPM). Fast ticks mean a fast tempo. Slow ticks mean a slow tempo. Listen to slow, then fast.', kid: 'Listen! First the ticks are SLOW. Then the ticks are FAST. Can you hear the difference?',
           vis: { k: 'beats', count: 4 }, play: { clicks: { bpm: 60, count: 4, then: { bpm: 120, count: 8 } } } }
       ],
       gen: function (level, r) {
@@ -253,7 +253,7 @@
       gen: function (level) {
         var bpm = [60, 72, 72][level], beats = [4, 4, 8][level];
         return { type: 'rhythm', bpm: bpm, pattern: Array.apply(null, Array(beats)).map(function () { return 1; }),
-          prompt: 'Listen to the clicks. Then tap any key on every beat.', kid: 'Tap a key with every click!',
+          prompt: 'Listen to the clicks. Then tap any key on every beat.', kid: 'Now it is your turn! Tap a key every time you hear a CLICK.',
           voice: 'Listen to the clicks. Then tap any key on every beat.' };
       }
     },
@@ -261,15 +261,15 @@
       id: 'th6', kind: 'theory', stage: 'Foundations', sticker: '📏', title: 'Short, long and very long', prereqs: ['th5'], maxLevel: 2, reviewed: false,
       blurb: 'Learn how long notes last, counted in beats.',
       lesson: [
-        { title: 'Notes have lengths', text: 'Some notes are short and some are long. We measure how long a note lasts in beats.', kid: 'Some sounds are short. Some sounds are long!',
+        { title: 'Notes have lengths', text: 'Some notes are short and some are long. We measure how long a note lasts in beats.', kid: 'Some sounds are SHORT and quick. Some sounds are LONG and slow. Listen for short and long!',
           vis: { k: 'blocks', pattern: [1, 2, 4] } },
-        { title: 'Short = 1 beat', text: 'A short note lasts 1 beat. Its musical name is a quarter note. Listen to it with the beat.', kid: 'A SHORT sound lasts 1 beat. Listen!',
+        { title: 'Short = 1 beat', text: 'A short note lasts 1 beat. Its musical name is a quarter note. Listen to it with the beat.', kid: 'Listen! A SHORT sound is quick. It lasts just one beat.',
           vis: { k: 'blocks', pattern: [1] }, play: { pattern: [1], bpm: 60, clicks: true }, auto: true },
-        { title: 'Long = 2 beats', text: 'A long note lasts 2 beats. Its musical name is a half note. Count 1, 2 while it sounds.', kid: 'A LONG sound lasts 2 beats. Count 1, 2!',
+        { title: 'Long = 2 beats', text: 'A long note lasts 2 beats. Its musical name is a half note. Count 1, 2 while it sounds.', kid: 'A LONG sound lasts two beats. Count with me: one, two. It is longer than a short sound!',
           vis: { k: 'blocks', pattern: [2] }, play: { pattern: [2], bpm: 60, clicks: true } },
-        { title: 'Very long = 4 beats', text: 'A very long note lasts 4 beats. Its musical name is a whole note. Count 1, 2, 3, 4 while it sounds.', kid: 'A VERY LONG sound lasts 4 beats. Count 1, 2, 3, 4!',
+        { title: 'Very long = 4 beats', text: 'A very long note lasts 4 beats. Its musical name is a whole note. Count 1, 2, 3, 4 while it sounds.', kid: 'A VERY LONG sound lasts four beats. Count with me: one, two, three, four. It is the longest sound!',
           vis: { k: 'blocks', pattern: [4] }, play: { pattern: [4], bpm: 60, clicks: true } },
-        { title: 'Put them together', text: 'Here are short, long and very long notes one after another. Listen and count along.', kid: 'Short, long, very long. Listen and count!',
+        { title: 'Put them together', text: 'Here are short, long and very long notes one after another. Listen and count along.', kid: 'Now listen to all three. First a short sound, then a long sound, then a very long sound. Count along!',
           vis: { k: 'blocks', pattern: [1, 2, 4] }, play: { pattern: [1, 2, 4], bpm: 72, clicks: true } }
       ],
       gen: function (level, r) {
@@ -307,7 +307,7 @@
         ];
         var p = pick(sets[level], r);
         return { type: 'rhythm', bpm: 64, pattern: p, showPattern: true,
-          prompt: 'Tap the pattern. A short block is 1 beat. A long block is 2 beats.', kid: 'Tap the blocks. Short is quick. Long is slow.',
+          prompt: 'Tap the pattern. A short block is 1 beat. A long block is 2 beats.', kid: 'Tap the blocks to hear them. The small block is a short sound. The big blocks are longer sounds.',
           voice: 'Tap the pattern. Short blocks are one beat. Long blocks are two beats.' };
       }
     },
@@ -317,15 +317,15 @@
       id: 'th7', kind: 'theory', stage: 'Beginner', sticker: '📖', title: 'Reading the staff', prereqs: ['th4', 'th3'], maxLevel: 1, reviewed: false,
       blurb: 'How notes are written down, and what the staff and clefs are.',
       lesson: [
-        { title: 'The staff', text: 'Music is written on five lines called the staff. Notes sit on the lines or in the spaces between them.', kid: 'Music lives on five lines. Notes sit on the lines or between them!',
+        { title: 'The staff', text: 'Music is written on five lines called the staff. Notes sit on the lines or in the spaces between them.', kid: 'Music is written on FIVE lines. The notes sit on the lines, or in the spaces between the lines.',
           vis: { k: 'staff', notes: [64, 67], clef: 'treble' } },
-        { title: 'Higher and lower', text: 'Higher notes are written higher on the staff. Lower notes are written lower. Press the speaker to hear C D E F G going up.', kid: 'Up on the lines is high. Down is low. Listen!',
+        { title: 'Higher and lower', text: 'Higher notes are written higher on the staff. Lower notes are written lower. Press the speaker to hear C D E F G going up.', kid: 'Listen! A note up HIGH on the lines is a high sound. A note down LOW is a low sound.',
           vis: { k: 'staff', notes: [60, 62, 64, 65, 67], clef: 'treble', names: true }, play: { notes: [60, 62, 64, 65, 67] }, auto: true },
-        { title: 'Treble clef', text: 'The treble clef is for higher notes. They are usually played with the right hand.', kid: 'The treble clef is for HIGH notes. Right hand!',
+        { title: 'Treble clef', text: 'The treble clef is for higher notes. They are usually played with the right hand.', kid: 'This is the TREBLE clef. It is for high notes. High notes are played by your right hand.',
           vis: { k: 'staff', notes: [64, 65, 67], clef: 'treble', names: true } },
-        { title: 'Bass clef', text: 'The bass clef is for lower notes. They are usually played with the left hand.', kid: 'The bass clef is for LOW notes. Left hand!',
+        { title: 'Bass clef', text: 'The bass clef is for lower notes. They are usually played with the left hand.', kid: 'This is the BASS clef. It is for low notes. Low notes are played by your left hand.',
           vis: { k: 'staff', notes: [48, 50, 52, 53, 55], clef: 'bass', names: true } },
-        { title: 'Middle C', text: 'Middle C sits on a little extra line below the treble staff, called a ledger line. Tap Middle C on the keyboard.', kid: 'Middle C sits below the lines on a little line. Tap Middle C!',
+        { title: 'Middle C', text: 'Middle C sits on a little extra line below the treble staff, called a ledger line. Tap Middle C on the keyboard.', kid: 'This is MIDDLE C. It sits just below the lines, on its own little line. Can you tap Middle C?',
           vis: { k: 'staff', notes: [60], clef: 'treble', names: true, kb: { lo: 60, hi: 72 } }, tap: [{ mode: 'note', note: 60 }] }
       ],
       gen: function (level, r) {
@@ -357,7 +357,7 @@
         return { type: 'seq', targets: o.t, fingers: o.f, hand: 'L', clef: 'bass', showStaff: true, prompt: o.s, kid: o.k, voice: o.s, hint: true,
           setup: { hand: 'L', fingerNotes: up.slice().reverse(), confirmNote: 48, title: 'Left hand: get ready',
             text: 'Put your left pinky (5) on the low C. Rest one finger on each of the next white keys: 4 on D, 3 on E, 2 on F and your thumb (1) on G. Then press the key under your pinky.',
-            kid: 'Left hand! Little finger on the low C. One finger on each key. Press under your little finger!' } };
+            kid: 'This is your LEFT hand. Put your little finger on the low red key. Then one finger on each key. Now press the key under your little finger!' } };
       }
     },
     {

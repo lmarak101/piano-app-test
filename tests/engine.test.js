@@ -224,9 +224,9 @@ t('content: kid prompts are short and simple', () => {
   const r = rng(11);
   C.SKILLS.forEach(s => { for (let lvl = 0; lvl <= s.maxLevel; lvl++) for (let k = 0; k < 40; k++) {
     const ex = C.makeExercise(s, lvl, r); const words = ex.kid.split(/\s+/).length;
-    assert.ok(words <= 20, s.id + ' kid prompt too long (' + words + '): ' + ex.kid);
+    assert.ok(words <= 24, s.id + ' kid prompt too long (' + words + '): ' + ex.kid);
   } });
-  C.SKILLS.filter(s => s.kind === 'theory').forEach(s => s.lesson.forEach((st, i) => assert.ok(st.kid.split(/\s+/).length <= 30, s.id + ' step ' + (i + 1) + ' kid text too long')));
+  C.SKILLS.filter(s => s.kind === 'theory').forEach(s => s.lesson.forEach((st, i) => assert.ok(st.kid.split(/\s+/).length <= 40, s.id + ' step ' + (i + 1) + ' kid text too long')));
 });
 
 t('scheduler: starts with the first lesson, unlocks in order', () => {
