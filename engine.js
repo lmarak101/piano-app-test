@@ -118,8 +118,9 @@
     var cur = avail.filter(function (s) { return s.id === ctx.lastSkillId; })[0];
 
     // 1. Stuck: step back to the weakest prerequisite.
-    if (cur && states[cur.id].failStreak >= 5 && cur.prereqs.length) {
-      var weakest = cur.prereqs.slice().sort(function (a, b) { return states[a].score - states[b].score; })[0];
+    var pre = cur ? cur.prereqs.filter(function (id) { return map[id]; }) : [];
+    if (cur && states[cur.id].failStreak >= 5 && pre.length) {
+      var weakest = pre.slice().sort(function (a, b) { return states[a].score - states[b].score; })[0];
       return { skillId: weakest, mode: 'review', reason: 'step-back', from: cur.id };
     }
     // 2. Spaced review of older skills every 4th activity.
@@ -140,10 +141,26 @@
     }
     return { skillId: pick.id, mode: states[pick.id].failStreak >= 3 ? 'support' : 'learn', reason: 'next' };
   }
+  // Does a tapped note satisfy a quiz rule? Rules are plain data so content stays testable.
+  function checkAccept(a, note) {
+    switch (a.mode) {
+      case 'any': return true;
+      case 'black': return !isWhite(note);
+      case 'white': return isWhite(note);
+      case 'range': return note >= a.lo && note <= a.hi;
+      case 'pc': return a.pcs.indexOf(mod12(note)) >= 0;
+      case 'note': return note === a.note;
+    }
+    return false;
+  }
+  function quizQuality(tries) { return tries === 0 ? 1 : (tries === 1 ? 0.55 : 0); }
   function stageDone(skills, states, stage) {
     return skills.filter(function (s) { return s.stage === stage; }).every(function (s) { return states[s.id].mastered; });
   }
-  function sessionLength(age) { return age === '4-7' ? 5 : (age === '8-12' ? 8 : 10); }
+  function sessionLength(age, kind) {
+    if (kind === 'theory') return age === '4-7' ? 4 : 6;
+    return age === '4-7' ? 5 : (age === '8-12' ? 8 : 10);
+  }
   function defaultReading(age) { return age === '4-7' ? 'none' : (age === '8-12' ? 'some' : 'fluent'); }
 
   var api = {
@@ -153,6 +170,7 @@
     masteryConfig: masteryConfig, newSkillState: newSkillState, ensureStates: ensureStates,
     updateSkill: updateSkill, levelFor: levelFor, stars: stars,
     available: available, pickNext: pickNext, stageDone: stageDone,
+    checkAccept: checkAccept, quizQuality: quizQuality,
     sessionLength: sessionLength, defaultReading: defaultReading
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Engine = api;

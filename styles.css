@@ -53,3 +53,32 @@ table { width:100%; border-collapse:collapse; font-size:14px; } td, th { padding
 .modal > div { background:var(--card); border-radius:16px; padding:18px; max-width:420px; width:100%; max-height:90vh; overflow:auto; }
 .premium { border:2px solid var(--warn); }
 textarea { width:100%; height:120px; background:#14161a; color:var(--fg); border:1px solid #3a404a; border-radius:8px; font:12px ui-monospace,monospace; }
+
+/* ---- Milestone 1.5 additions ---- */
+.guide { display:flex; gap:10px; align-items:flex-start; margin:4px 0 10px; }
+.mascot { font-size:46px; line-height:1; }
+.bubble { background:#2b3340; border-radius:16px 16px 16px 4px; padding:10px 14px; font-size:22px; font-weight:700; flex:1; }
+.handtag { display:inline-block; padding:3px 12px; border-radius:12px; color:#111; font-weight:800; font-size:14px; margin-bottom:6px; }
+body.kid .handtag { font-size:18px; }
+.opts { display:grid; gap:8px; margin-top:8px; }
+.optrow { display:flex; gap:8px; align-items:stretch; }
+.optbtn { flex:1; background:var(--card2); color:var(--fg); text-align:left; border:2px solid #3a404a; font-weight:700; }
+.optbtn.wrong { opacity:.35; text-decoration:line-through; }
+.optbtn.right { border-color:var(--ok); background:#12392a; }
+.optbtn.blocks { text-align:center; }
+.play { padding:10px 14px; background:#3a404a; color:var(--fg); }
+.lessonvis { margin:8px 0 12px; text-align:center; }
+.lessonvis svg { max-width:100%; height:auto; }
+.big-emoji { font-size:96px; line-height:1.1; }
+.stickers { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0; }
+.sticker { width:44px; height:44px; border-radius:12px; background:var(--card2); display:flex; align-items:center; justify-content:center; font-size:26px; }
+.sticker.off { opacity:.3; filter:grayscale(1); }
+body.kid .sticker { width:56px; height:56px; font-size:34px; }
+.twobtn { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; }
+.kindbtn { padding:16px 10px; border-radius:16px; text-align:center; background:var(--card2); color:var(--fg); border:2px solid transparent; }
+.kindbtn.rec { border-color:var(--acc); background:#1d2f45; }
+.kindbtn b { display:block; font-size:20px; } .kindbtn span { font-size:13px; color:var(--mut); font-weight:600; }
+.kindbtn .ico { font-size:34px; display:block; }
+.kindbtn:disabled { opacity:.45; }
+.pill.theory { background:#2a2f4a; color:#9bb0ff; } .pill.practical { background:#3a2f26; color:#ffb98a; }
+.kbnote { font-size:13px; color:var(--mut); margin:6px 2px; }
